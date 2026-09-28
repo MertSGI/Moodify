@@ -102,12 +102,13 @@ Below is an exhaustive inventory of every mock, fixture, simulated delay, and lo
 
 ---
 
-## 10. Proactive Follow-Up Generator
+## 10. Proactive Follow-Up Generator & Settings
 
-- **What is Mocked**: In-session proactive message generation.
+- **What is Mocked**: In-session proactive message generation and companion settings.
 - **Why it Exists**: Demonstrates non-manipulative proactive check-in UI (`isProactive: true`, origin pill, suggested replies) within a single browser session.
 - **Daily Frequency Limit**: Initial count = 0; date-aware reset on calendar day change; strictly enforces `effectiveMax = min(settings.maxPingsPerDay, modeSafetyCap)` (Quiet: 0, Balanced: 3, Companion: 5).
-- **Where Implemented**: `src/services/proactiveService.ts`.
+- **Settings Persistence**: User adjustments to proactivity intensity mode, quiet hours, and category toggles persist in browser storage under `moodify_proactive_settings`.
+- **Where Implemented**: `src/services/proactiveService.ts`, `src/context/AppContext.tsx`.
 - **Production Replacement**: A cloud-scheduled background worker (e.g. Cloud Tasks or Celery cron) evaluating calendar webhooks, checking quiet hours schedules, and dispatching Web Push Notifications or mobile push notifications.
 
 ---
@@ -123,8 +124,8 @@ Below is an exhaustive inventory of every mock, fixture, simulated delay, and lo
 
 ## 12. Local Browser Storage Persistence
 
-- **What is Mocked**: Persistence mechanism. Data is persisted to client-side `window.localStorage` under keys `moodify_memories`, `moodify_taste_nodes`, `moodify_plans`, `moodify_privacy_settings`, `moodify_context`.
-- **Why it Exists**: Guarantees that evaluator actions (adding a memory, editing ramen to udon, toggling personalization, deleting records, saving plans) survive page refreshes and browser reloads on the same machine, without requiring a remote database server.
+- **What is Mocked**: Persistence mechanism. Data is persisted to client-side `window.localStorage` under six keys: `moodify_memories`, `moodify_taste_nodes`, `moodify_plans`, `moodify_privacy_settings`, `moodify_proactive_settings`, and `moodify_context`. (During Private Sessions, context mutations are isolated in memory and barred from writing to `moodify_context`).
+- **Why it Exists**: Guarantees that evaluator actions (adding a memory, editing preferences, toggling proactivity settings, deleting records, saving plans) survive page refreshes and browser reloads on the same machine, without requiring a remote database server.
 - **Where Implemented**: `src/context/AppContext.tsx` (`useEffect` sync and state initializers).
 - **Production Replacement**: Remote authenticated database backend (PostgreSQL with Drizzle ORM or Firebase Firestore) with optimistic client cache and real-time syncing.
 
@@ -138,3 +139,7 @@ Below is an exhaustive inventory of every mock, fixture, simulated delay, and lo
 4. **`CALENDAR_PLAN_IS_CALENDAR_SYNCED = false`**: Plan items have `isCalendarSynced: false`.
 5. **`LIVE_GEMINI_CALL_COUNT = 0`**: No live LLM inference in the prototype.
 6. **`REAL_EXTERNAL_INTEGRATION_COUNT = 0`**: All external providers operate in local mock mode.
+7. **`APPLICATION_LEVEL_ENCRYPTION_IMPLEMENTED = false`**: Application-level envelope encryption is not implemented; UI honestly displays NOT IMPLEMENTED IN LOCAL PROTOTYPE.
+8. **`IMMUTABLE_AUDIT_LOG_IMPLEMENTED = false`**: Firewall audit logs are local in-memory bounded ring buffer (last 20 entries).
+9. **`SERVER_SECRET_VAULT_IMPLEMENTED = false`**: No server backend exists in local prototype.
+10. **`CRISIS_RESPONSE_FLOW_IMPLEMENTED = false`**: Clinical terms filtered via regex; no automated crisis escalation pipeline.

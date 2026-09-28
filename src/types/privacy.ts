@@ -58,3 +58,5 @@ export interface PrivacySettings {
   blockedCategories: string[];
 }
 
+export const APPLICATION_LEVEL_ENCRYPTION_IMPLEMENTED = false;
+

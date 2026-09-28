@@ -38,7 +38,7 @@ export const INITIAL_CONTEXT: ContextSnapshot = {
   weatherSummary: '62°F, overcast with gentle rain',
   nextCalendarEventInMinutes: undefined,
   freeHoursRemainingToday: 4.5,
-  notes: 'Calendar confirms no evening commitments past 5:30 PM.',
+  notes: 'Mock calendar fixture confirms no evening commitments past 5:30 PM.',
 };
 
 export const SEED_MEMORIES: MemoryItem[] = [
@@ -203,7 +203,7 @@ export const SEED_MEMORIES: MemoryItem[] = [
     key: 'design_review_marcus',
     value: 'Had a critical quarterly design review with VP Marcus today at 2:00 PM regarding the new mobile workspace launch',
     source: 'CALENDAR_DERIVED',
-    sourceQuote: 'Calendar event: "Q3 Core Design Review w/ Marcus (VP Design)"',
+    sourceQuote: 'Mock calendar fixture: "Q3 Core Design Review w/ Marcus (VP Design)"',
     createdAt: '2026-09-27T08:00:00Z',
     updatedAt: '2026-09-28T09:00:00Z',
     confidence: 0.96,
@@ -213,7 +213,7 @@ export const SEED_MEMORIES: MemoryItem[] = [
     isImportant: true,
     allowedForPersonalization: true,
     allowedForExternalTools: false,
-    reasoningForBelief: 'Derived from connected Google Calendar work account with high importance flag.',
+    reasoningForBelief: 'Derived from mock calendar fixture with high importance flag (simulated demo source; no live account connected).',
   },
 
   // Sensitive & Boundaries
@@ -454,13 +454,13 @@ export const SEED_RECOMMENDATIONS: RecommendationItem[] = [
         { key: 'live_shows_preference', snippet: 'Intimate 500-cap rooms with great acoustics only', domain: 'music' },
       ],
       contextAlignment: [
-        { dimension: 'Friday Availability', reason: 'Calendar shows Oct 9 evening is currently open' },
+        { dimension: 'Friday Availability', reason: 'Mock calendar schedule shows Oct 9 evening is currently open' },
       ],
       tasteFactor: [
         { tasteNodeName: 'Japanese Breakfast', relation: 'LOVES', weightReason: 'Highest affinity indie rock entity' },
         { tasteNodeName: 'Small Independent Venues', relation: 'LOVES', weightReason: 'Thalia Hall matches preferred venue profile' },
       ],
-      constraintsRespected: ['Sub-500 capacity room', 'Fair ticket pricing ($38 vs scalpers)', 'Calendar slot free'],
+      constraintsRespected: ['Sub-500 capacity room', 'Fair ticket pricing ($38 vs scalpers)', 'Mock calendar slot free'],
       noveltyScore: 0.6,
     },
     actionPrompt: 'Set Ticket Drop Reminder',
@@ -588,8 +588,8 @@ export const SEED_PLANS: PlanItem[] = [
 export const SEED_ACTIONS: ActionPlan[] = [
   {
     id: 'act_01',
-    title: 'Add Ticket Drop to Google Calendar',
-    description: 'Add a 15-minute hold to your calendar for "Japanese Breakfast Ticket Drop (Thalia Hall)" on Thursday at 9:55 AM.',
+    title: 'Schedule Ticket Drop Hold (Mock)',
+    description: 'Add a 15-minute simulated hold to your schedule for "Japanese Breakfast Ticket Drop (Thalia Hall)" on Thursday at 9:55 AM (local prototype simulation).',
     targetProvider: 'CALENDAR',
     actionName: 'CREATE_CALENDAR_EVENT',
     riskLevel: 'EXTERNAL_WRITE',
@@ -611,13 +611,13 @@ export const SEED_INTEGRATIONS: IntegrationProvider[] = [
     name: 'Google Calendar',
     category: 'calendar',
     icon: 'Calendar',
-    description: 'Reads your availability, schedule gaps, and upcoming obligations with progressive permissions.',
+    description: 'Simulated adapter that models availability, schedule gaps, and upcoming obligations with progressive permissions.',
     status: 'MOCK',
     isOptional: false,
     permissionsRequired: ['calendar.readonly', 'calendar.events (with explicit confirmation)'],
     privacyNotes: 'Simulated prototype adapter. No live OAuth connection to Google Calendar is active.',
-    lastSyncedAt: '12 minutes ago',
-    capabilities: ['Availability checking', 'Contextual timing detection', 'Hold scheduling with approval'],
+    lastSyncedAt: 'Simulated fixture',
+    capabilities: ['Availability checking (simulated)', 'Contextual timing detection', 'Hold scheduling with approval'],
   },
   {
     id: 'int_music',
@@ -705,7 +705,7 @@ export const INITIAL_CHAT_MESSAGES: ChatMessage[] = [
     text: 'Hey Alex. It’s Friday evening and your schedule is clear for the rest of the night. How are you feeling after that afternoon design review with Marcus?',
     timestamp: '2026-09-28T17:35:00Z',
     isProactive: true,
-    proactiveReason: 'Noticed your 2 PM design review ended and evening calendar is free.',
+    proactiveReason: 'Noticed your 2 PM design review ended and evening mock calendar schedule is free.',
     sourceMemoryTrigger: 'mem_10 (design_review_marcus)',
     suggestedReplies: [
       'Today was awful. I don’t really want to think.',
@@ -735,6 +735,6 @@ export const DEFAULT_PRIVACY_SETTINGS: PrivacySettings = {
   allowExternalToolsAccess: false,
   storeChatTranscriptsPermanently: false,
   anonymousTelemetry: false,
-  applicationLevelEncryptionEnabled: true,
+  applicationLevelEncryptionEnabled: false,
   blockedCategories: [],
 };

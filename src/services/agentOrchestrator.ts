@@ -122,14 +122,14 @@ export class AgentOrchestrator {
       textLower.includes('celebrate')
     ) {
       responseText =
-        "Looking at your calendar, your Friday night is completely open. Because you love intimate indie rock shows and smaller venues like Thalia Hall, here is an incredible option for this month:";
+        "Looking at your schedule snapshot, your Friday night is completely open. Because you love intimate indie rock shows and smaller venues like Thalia Hall, here is an incredible option for this month:";
 
       const concertRec = allRecommendations.find(r => r.id === 'rec_03') || allRecommendations[2];
 
       const calendarProposal: ActionPlan = {
         id: `act_${Date.now()}`,
-        title: 'Schedule Ticket Drop Alert on Calendar',
-        description: 'Set a 15-minute hold on Google Calendar for "Japanese Breakfast Ticket Drop" on Thursday at 9:55 AM.',
+        title: 'Schedule Ticket Drop Hold (Mock)',
+        description: 'Set a 15-minute simulated hold for "Japanese Breakfast Ticket Drop" on Thursday at 9:55 AM (local prototype simulation).',
         targetProvider: 'CALENDAR',
         actionName: 'CREATE_CALENDAR_EVENT',
         riskLevel: 'EXTERNAL_WRITE',
@@ -156,7 +156,7 @@ export class AgentOrchestrator {
       });
 
       suggestedReplies = [
-        'Confirm adding this to my calendar.',
+        'Authorize simulated calendar hold.',
         'Why did you recommend this specific venue?',
         'Show me something more low-key instead.',
       ];

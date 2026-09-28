@@ -154,7 +154,7 @@ export class ProactiveService {
           proactiveReason: 'Tracked artist intimate date announcement at favored venue',
           sourceMemoryTrigger: concertMem.id,
           suggestedReplies: [
-            'Place a hold on my Google Calendar for the presale.',
+            'Place a simulated calendar hold for the presale.',
             'Show details and ticket prices.',
           ],
         };

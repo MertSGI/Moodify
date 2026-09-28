@@ -1,55 +1,90 @@
 # Moodify — Privacy & Trust Model
 
-## 1. Privacy as a Core Feature
-
-Consumer AI products frequently treat privacy as an afterthought—hidden behind dense legal terms of service while telemetry and memory embeddings are harvested invisibly.
-
-**Moodify elevates privacy to a primary consumer-facing product feature.**
-
-Trust is earned through technical transparency, real-time auditability, and mathematical minimization.
+*Document Version: Phase 2-R2 Final Prototype Trust Alignment*  
+*Standard: Explicit architectural separation between current prototype truth and target production architecture.*
 
 ---
 
-## 2. The Personal Context Firewall
+## PART 1: CURRENT PROTOTYPE IMPLEMENTATION (TRUTH DISCLOSURE)
 
-The **Personal Context Firewall** is Moodify's flagship privacy innovation.
+### 1. Architectural Truth Invariants
 
-### The Problem It Solves
-When a typical AI assistant is asked: *"Where should I get dinner?"*, the entire user vector or full system prompt containing work stress, family issues, finances, and sensitive boundaries is forwarded to the LLM or third-party search tool.
+```
+LIVE_GEMINI_CALL_COUNT = 0
+REAL_EXTERNAL_INTEGRATION_COUNT = 0
+IMMUTABLE_AUDIT_LOG_IMPLEMENTED = false
+APPLICATION_LEVEL_ENCRYPTION_IMPLEMENTED = false
+SERVER_SECRET_VAULT_IMPLEMENTED = false
+CRISIS_RESPONSE_FLOW_IMPLEMENTED = false
+```
 
-### How the Firewall Operates
-Before any AI request or external tool invocation executes, the Firewall executes a 6-step evaluation:
-
-1. **Task Intent Classification:** Determines the exact functional objective (e.g. food discovery vs. evening decompression).
-2. **Minimal-Purpose Context Assembly:** Identifies which categories are strictly relevant (e.g., for snacks: `food`, `dislikes`, `budget_preferences`). All unrelated domains (`work`, `relationships`, `life_events`) are stripped.
-3. **Sensitivity Check:** High-sensitivity memories (e.g. family medical events) are blocked automatically unless the user explicitly refers to them.
-4. **Tool Authorization Audit:** Verifies whether `allowedForExternalTools` or `allowedForPersonalization` flags are enabled for each record.
-5. **Redaction Logging:** Produces an immutable, user-inspectable audit trail detailing why each piece of information was either admitted or withheld.
-6. **Payload Sanitization:** Sends only the clean, minimal context to the generative reasoning layer.
+The current Moodify build is a **client-side functional vision prototype**. It operates entirely within the user's browser, utilizing deterministic TypeScript engines, heuristic pattern matching, and browser `localStorage`. No cloud backend, database, or remote server routes currently exist.
 
 ---
 
-## 3. The Private Session ("Incognito Mode")
+### 2. The Personal Context Firewall (Current Prototype)
 
-Users can activate a **Private Session** at any time from the Navigation bar or Privacy Center:
+The **Personal Context Firewall** (`src/services/firewallService.ts`) is functional locally as an inspectable demonstration of minimal-purpose context assembly:
 
-- **No Durable Memory Commit:** No statements made during the session are extracted into the permanent vault.
-- **Taste Graph Freeze:** Recommendation feedback and selections do not alter long-term preference weights.
-- **Ephemeral Scratchpad:** Temporary context is wiped when the private session ends.
-
----
-
-## 4. Security & Cryptographic Posture
-
-- **No Client Secrets:** All API keys and model credentials reside securely in server-side environment variables (`.env`). No tokens are exposed to the browser.
-- **Application-Level Encryption Model:** Sensitive and highly sensitive memory categories are isolated with cryptographic envelopes. Keys can be client-derived to prevent server-side introspection.
-- **Zero Third-Party Ad Telemetry:** Listening history, location coordinates, and dietary preferences are never sold, syndicated, or shared with advertising networks.
+1. **Task Intent Classification**: Matches user message intents to relevant functional domains (e.g., dining, music, calendar hold).
+2. **Minimal-Purpose Context Assembly**: Evaluates active candidate memories and admits only domain-essential records (e.g., for grocery hauls: admitting `food_texture` and `snack_budget`, while stripping `profession`, `design_review_marcus`, and `kyoto_japan_trips`).
+3. **Sensitivity Gating**: Records tagged `HIGHLY_SENSITIVE` (e.g., family surgery) are automatically blocked from general recommendation ingestion.
+4. **Audit Logging (Local & Bounded)**:
+   - **Current Reality**: Firewall audit logs are **local, in-memory, bounded (retains only the 20 most recent decisions), and non-immutable**.
+   - Audit logs are NOT cryptographically signed or written to an immutable append-only ledger; they re-populate ephemerally as interactions occur in the active session.
 
 ---
 
-## 5. Medical & Clinical Non-Pathologization Boundary
+### 3. Ephemeral Private Session Boundary (Current Prototype)
 
-Moodify strictly enforces safety boundaries regarding mental health and medical conditions:
-- **No Diagnostic Claims:** Moodify never labels a user as "depressed," "bipolar," or "anxious."
-- **Everyday Support Only:** Moodify provides practical life support (music, quiet films, hot baths, organizing schedules).
-- **Crisis Response:** If severe self-harm or distress is detected, conversational curation is paused and supportive crisis resources (e.g., 988 Lifeline) are surfaced with empathy and dignity.
+Moodify provides a 1-tap "Private Session" toggle in the navigation header and Privacy Center:
+
+- **Candidate Memory Extraction Blocked**: Any preference, dislike, or routine stated during a Private Session is ignored by `MemoryService`.
+- **Durable Vault Commits Suppressed**: No memories can be added or committed to the permanent memory store while active.
+- **Taste Learning Suppressed**: Recommendation feedback (`LIKE_IT`, `LOVE_IT`, `NOT_FOR_ME`) does not modify `TasteNode` weights or edge relations.
+- **Durable Context Isolation**:
+  - Upon activating a Private Session, the pre-private durable context snapshot is preserved in memory.
+  - While active, context state may adapt ephemerally for in-session conversational continuity, but **private session context is strictly barred from being written to durable `localStorage['moodify_context']`**.
+  - Upon deactivating Private Session, the pre-private durable context is restored, guaranteeing that private session interactions do not contaminate durable recommendation state.
+
+---
+
+### 4. Storage & Security Posture (Current Prototype)
+
+- **Storage Reality**: All user data (memories, taste graph, plans, settings, context) is stored as unencrypted JSON in browser `window.localStorage`.
+- **Application-Level Encryption Status**: `APPLICATION_LEVEL_ENCRYPTION_IMPLEMENTED = false`. The UI explicitly displays `NOT IMPLEMENTED IN LOCAL PROTOTYPE` for application-level encryption.
+- **Secret Management Status**: `SERVER_SECRET_VAULT_IMPLEMENTED = false`. Because no backend application server exists in the prototype, external API keys and secrets are neither hosted server-side nor stored in the client. External integration adapters operate in simulated `MOCK` mode.
+
+---
+
+### 5. Medical & Clinical Non-Pathologization (Current Prototype)
+
+- **Diagnostic Prohibition**: Moodify never diagnoses, classifies, or labels medical or mental health disorders.
+- **Clinical Term Exclusion**: In `MemoryService.ts`, user statements mentioning clinical psychiatric, medical, or pharmacology terms are automatically tagged `DO_NOT_STORE` and discarded.
+- **Crisis Response Status**: `CRISIS_RESPONSE_FLOW_IMPLEMENTED = false`. The current prototype does not implement an automated clinical distress detection or crisis redirection flow (e.g. 988 Lifeline handoff).
+
+---
+
+## PART 2: TARGET PRODUCTION ARCHITECTURE (FUTURE SPECIFICATION)
+
+The following architectural specifications represent the target production design required when transitioning to a full-stack, enterprise-grade deployment:
+
+### 1. Server-Side Context Firewall Middleware
+- The Personal Context Firewall will execute as a server-side pre-inference middleware before constructing any LLM prompt payload.
+- Tokenized sanitized context payloads will be injected into Gemini context windows with strict mathematical justification signatures.
+
+### 2. Application-Level Envelope Encryption (Target Design)
+- Sensitive memory records (`SENSITIVE` and `HIGHLY_SENSITIVE`) will be encrypted at the application layer prior to database persistence.
+- Cryptographic envelopes will utilize client-derived keys or customer-managed keys (Google Cloud KMS / AWS KMS) to prevent unprivileged server-side or database administrator introspection.
+
+### 3. Immutable Compliance Audit Ledger (Target Design)
+- Every context filtering decision, memory access, and tool invocation will be appended to an immutable, tamper-evident log store (e.g., Cloud Audit Logs or append-only PostgreSQL table with cryptographic hash chains).
+- Supports user-driven GDPR/CCPA data export and privacy auditing with full legal fidelity.
+
+### 4. Server Secret Vault (Target Design)
+- All Gemini API keys, provider OAuth client secrets, and database credentials will reside exclusively in a server-side Secret Vault (Google Secret Manager).
+- Client applications will receive short-lived, scoped session JWTs; zero provider secrets or LLM keys will be exposed to the browser runtime.
+
+### 5. Production Crisis Response Pipeline (Target Design)
+- Dedicated safety classifiers running in parallel with conversation routing will detect immediate self-harm, medical emergency, or severe psychiatric distress.
+- When triggered, conversational curation will be paused, and verified regional crisis intervention resources (such as the 988 Suicide & Crisis Lifeline) will be presented with dignity and empathy.

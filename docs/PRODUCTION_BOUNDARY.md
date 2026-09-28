@@ -9,7 +9,7 @@
 
 In the current Vision Prototype, all application state, business logic, and security rules execute client-side within the browser. 
 
-The authoritative persistent records currently reside exclusively in browser `window.localStorage` under five keys:
+The authoritative persistent records currently reside exclusively in browser `window.localStorage` under six keys:
 
 | Storage Key | Current Prototype Authority | Scope & Lifecycle |
 |---|---|---|
@@ -17,7 +17,8 @@ The authoritative persistent records currently reside exclusively in browser `wi
 | `moodify_taste_nodes` | Complete authority over the taste graph entities, relations (`LOVES`, `LIKES`, `AVOIDS`), and strength weights. | Local browser only; mutated by recommendation feedback. |
 | `moodify_plans` | Authority over saved intentions, shopping checklists, watchlists, and simulated calendar holds. | Local browser only; mutated by user plan actions. |
 | `moodify_privacy_settings` | Authority over private session toggle, master personalization toggle, sensitive data permissions, and category blocks. | Local browser only; read by Context Firewall. |
-| `moodify_context` | Authority over current contextual dimensions (`energy`, `stress`, `valence`, `focusNeed`), weather, and primary state. | Local browser only; updated by self-report and conversation. |
+| `moodify_proactive_settings` | Authority over companion proactivity intensity (`QUIET`, `BALANCED`, `COMPANION`), quiet hours window, daily maximum pings, and category alert toggles. | Local browser only; evaluated by Proactive Service. |
+| `moodify_context` | Authority over current contextual dimensions (`energy`, `stress`, `valence`, `focusNeed`), weather, and primary state. | Local browser only; updated by self-report and conversation. (During Private Session, context updates are isolated in memory and barred from writing to this key). |
 
 ### Prototype Authority Warning
 These client-side storage keys are **strictly temporary prototype authorities**. They are subject to local device clearing, lack cross-device synchronization, have no encryption-at-rest beyond host OS security, and provide no team or multi-user isolation.

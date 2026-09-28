@@ -760,14 +760,14 @@ export const YouView: React.FC = () => {
             <div className="p-4 rounded-2xl bg-stone-850/60 border border-stone-800 flex items-center justify-between">
               <div>
                 <span className="text-xs font-semibold text-stone-200 block">
-                  Application-Level Encryption Ready
+                  Application-Level Encryption
                 </span>
                 <span className="text-[11px] text-stone-400">
-                  Sensitive memory records are isolated for client-side cryptographic envelope encryption.
+                  Target production design: field/envelope encryption for sensitive server-side memory.
                 </span>
               </div>
-              <span className="text-xs text-emerald-400 font-mono px-2 py-0.5 rounded bg-emerald-950/60 border border-emerald-900/40">
-                ACTIVE
+              <span className="text-xs text-amber-400 font-mono px-2 py-0.5 rounded bg-amber-950/60 border border-amber-900/40">
+                NOT IMPLEMENTED IN LOCAL PROTOTYPE
               </span>
             </div>
           </div>

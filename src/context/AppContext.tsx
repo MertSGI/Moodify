@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import {
   SEED_USER,
   INITIAL_CONTEXT,
@@ -156,8 +156,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
-  const [proactiveSettings, setProactiveSettings] = useState<ProactiveSetting>(DEFAULT_PROACTIVE_SETTINGS);
+  const [proactiveSettings, setProactiveSettings] = useState<ProactiveSetting>(() => {
+    try {
+      const stored = localStorage.getItem('moodify_proactive_settings');
+      return stored ? JSON.parse(stored) : DEFAULT_PROACTIVE_SETTINGS;
+    } catch {
+      return DEFAULT_PROACTIVE_SETTINGS;
+    }
+  });
   const [firewallLogs, setFirewallLogs] = useState<FirewallDecision[]>([]);
+
+  // Ref to preserve durable pre-private-session context
+  const prePrivateContextRef = useRef<ContextSnapshot | null>(null);
+  const prevPrivateSessionRef = useRef<boolean>(privacySettings.isPrivateSession);
+
+  // Monitor Private Session transitions to preserve and restore durable context
+  useEffect(() => {
+    const wasPrivate = prevPrivateSessionRef.current;
+    const isPrivate = privacySettings.isPrivateSession;
+    prevPrivateSessionRef.current = isPrivate;
+
+    if (!wasPrivate && isPrivate) {
+      // Private session starts: preserve the pre-private-session durable context
+      prePrivateContextRef.current = context;
+    } else if (wasPrivate && !isPrivate) {
+      // Private session ends: restore the pre-private-session durable context
+      const restored = prePrivateContextRef.current;
+      if (restored) {
+        setContext(restored);
+        try {
+          localStorage.setItem('moodify_context', JSON.stringify(restored));
+        } catch {}
+        prePrivateContextRef.current = null;
+      }
+    }
+  }, [privacySettings.isPrivateSession]);
 
   // Local storage synchronization (functional browser persistence)
   useEffect(() => {
@@ -186,9 +219,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     try {
-      localStorage.setItem('moodify_context', JSON.stringify(context));
+      localStorage.setItem('moodify_proactive_settings', JSON.stringify(proactiveSettings));
     } catch {}
-  }, [context]);
+  }, [proactiveSettings]);
+
+  // Context persistence: NEVER write to durable localStorage while private session is active
+  useEffect(() => {
+    if (!privacySettings.isPrivateSession) {
+      try {
+        localStorage.setItem('moodify_context', JSON.stringify(context));
+      } catch {}
+    }
+  }, [context, privacySettings.isPrivateSession]);
 
   // Keep firewall logs updated
   useEffect(() => {
@@ -201,12 +243,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.removeItem('moodify_taste_nodes');
       localStorage.removeItem('moodify_plans');
       localStorage.removeItem('moodify_privacy_settings');
+      localStorage.removeItem('moodify_proactive_settings');
       localStorage.removeItem('moodify_context');
     } catch {}
+    prePrivateContextRef.current = null;
     setMemories(SEED_MEMORIES);
     setTasteNodes(SEED_TASTE_NODES);
     setPlans(SEED_PLANS);
     setPrivacySettings(DEFAULT_PRIVACY_SETTINGS);
+    setProactiveSettings(DEFAULT_PROACTIVE_SETTINGS);
     setContext(INITIAL_CONTEXT);
     setChatMessages(INITIAL_CHAT_MESSAGES);
   };
@@ -452,6 +497,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       contextSnapshot: context,
       plans,
       privacySettings,
+      proactiveSettings,
     };
 
     const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json' });
