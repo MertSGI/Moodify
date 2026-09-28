@@ -1,6 +1,6 @@
 # Moodify Production Boundary Specification
 
-*Document Version: Phase 2-R3 Final Edge-Case Closure*  
+*Document Version: Phase 2-R4 Atomic Privacy & Local-Day Closure*  
 *Standard: Boundary definition between current prototype client authority and required production server-side architecture.*
 
 ---
@@ -19,12 +19,12 @@ The authoritative persistent records currently reside exclusively in browser `wi
 | `moodify_plans` | Authority over saved intentions, shopping checklists, watchlists, and simulated calendar holds. | Local browser only; mutated by user plan actions. |
 | `moodify_privacy_settings` | Authority over user privacy settings (private session toggle, master personalization toggle, sensitive data permissions, category blocks). | Local browser only; read by Context Firewall. |
 | `moodify_proactive_settings` | **User Settings Storage**: Authority over user-configured companion proactivity settings (intensity mode `QUIET`, `BALANCED`, `COMPANION`, quiet hours schedule, user max pings per day, category alert toggles). | Local browser only; persists user preferences across reloads. |
-| `moodify_context` | Authority over durable contextual dimensions (`energy`, `stress`, `valence`, `focusNeed`), weather, and primary state. | Local browser only; updated by self-report and conversation. (During Private Session, context updates are isolated in memory and barred from writing to this key; durable context is preserved and restored across reloads). |
+| `moodify_context` | Authority over durable contextual dimensions (`energy`, `stress`, `valence`, `focusNeed`), weather, and primary state. | Local browser only; updated by self-report and conversation. (During Private Session, context updates are isolated in memory and barred from writing to this key; private session exit is atomic with a restore guard, preventing transient durable writes and safely restoring durable context across reloads). |
 
 ### B. Proactivity Runtime Counter Storage
 | Storage Key | Current Prototype Authority | Scope & Lifecycle |
 |---|---|---|
-| `moodify_proactive_runtime` | **Proactivity Runtime Counter Storage**: Ephemeral runtime dispatch tracker storing `{ date: "YYYY-MM-DD", count: number }`. Enforces the true daily limit across page reloads (cannot be bypassed by refreshing). Automatically resets `count: 0` when the calendar date changes. Cleared on factory reset. | Local browser only; date-aware operational runtime state. |
+| `moodify_proactive_runtime` | **Proactivity Runtime Counter Storage**: Ephemeral runtime dispatch tracker storing `{ date: "YYYY-MM-DD", count: number }`. Enforces the true daily limit across page reloads (cannot be bypassed by refreshing). Date authority is browser-local (`PROACTIVE_DATE_AUTHORITY = LOCAL_BROWSER_CALENDAR_DATE`) using `getLocalDateKey()`, automatically resetting `count: 0` when the local calendar day changes at midnight. Cleared on factory reset. | Local browser only; local date-aware operational runtime state. |
 
 ### Prototype Authority Warning
 These client-side storage keys are **strictly temporary prototype authorities**. They are subject to local device clearing, lack cross-device synchronization, have no encryption-at-rest beyond host OS security, and provide no team or multi-user isolation.

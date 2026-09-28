@@ -1,6 +1,6 @@
 # Moodify — Privacy & Trust Model
 
-*Document Version: Phase 2-R3 Final Edge-Case Closure*  
+*Document Version: Phase 2-R4 Atomic Privacy & Local-Day Closure*  
 *Standard: Explicit architectural separation between current prototype truth and target production architecture.*
 
 ---
@@ -16,6 +16,9 @@ IMMUTABLE_AUDIT_LOG_IMPLEMENTED = false
 APPLICATION_LEVEL_ENCRYPTION_IMPLEMENTED = false
 SERVER_SECRET_VAULT_IMPLEMENTED = false
 CRISIS_RESPONSE_FLOW_IMPLEMENTED = false
+PRIVATE_SESSION_EXIT_ATOMIC = true
+PRIVATE_CONTEXT_TRANSIENT_DURABLE_WRITE = false
+PROACTIVE_DATE_AUTHORITY = LOCAL_BROWSER_CALENDAR_DATE
 ```
 
 The current Moodify build is a **client-side functional vision prototype**. It operates entirely within the user's browser, utilizing deterministic TypeScript engines, heuristic pattern matching, and browser `localStorage`. No cloud backend, database, or remote server routes currently exist.
@@ -35,7 +38,7 @@ The **Personal Context Firewall** (`src/services/firewallService.ts`) is functio
 
 ---
 
-### 3. Ephemeral Private Session Boundary & Reload Safety (Current Prototype)
+### 3. Ephemeral Private Session Boundary, Atomic Exit & Reload Safety (Current Prototype)
 
 Moodify provides a 1-tap "Private Session" toggle in the navigation header and Privacy Center:
 
@@ -46,7 +49,16 @@ Moodify provides a 1-tap "Private Session" toggle in the navigation header and P
   - Upon activating a Private Session, the pre-private durable context snapshot is preserved in memory.
   - While active, context state may adapt ephemerally for in-session conversational continuity, but **private session context is strictly barred from being written to durable `localStorage['moodify_context']`**.
   - **Browser Reload Safety**: If the page is reloaded while Private Session is active (`isPrivateSession: true`), the pre-private durable context snapshot is safely re-initialized from the untouched durable context in `moodify_context`.
-  - Upon deactivating Private Session (either before or after a browser reload), the pre-private durable context is restored, guaranteeing that private session interactions can **NEVER become durable or contaminate recommendation context across browser reloads**.
+- **Atomic Private Session Exit (`PRIVATE_SESSION_EXIT_ATOMIC = true`)**:
+  - Private session exit is handled atomically inside `updatePrivacySettings` rather than across competing asynchronous effects.
+  - Upon exiting Private Session (`isPrivateSession: false`):
+    1. The pre-private durable context A is resolved from `prePrivateContextRef` (or durable fallback).
+    2. A restore guard ref (`isRestoringFromPrivateRef = true`) is armed.
+    3. Context A is immediately written to durable `moodify_context`.
+    4. React context state is updated to A.
+    5. `isPrivateSession` is set to `false` in the same logical transition.
+    6. Generic context persistence is guarded by `isRestoringFromPrivateRef` and never receives or writes private context C to durable storage (`PRIVATE_CONTEXT_TRANSIENT_DURABLE_WRITE = false`).
+  - Guarantees that private session context **NEVER becomes durable or leaks into localStorage**, including during the exact millisecond of session exit or across browser reloads.
 
 ---
 
@@ -59,9 +71,9 @@ Moodify provides a 1-tap "Private Session" toggle in the navigation header and P
     - `moodify_plans`: User action plans and checklists
     - `moodify_privacy_settings`: Privacy preferences
     - `moodify_proactive_settings`: User proactivity configuration (mode, quiet hours, user max pings)
-    - `moodify_context`: Durable context snapshot (shielded from private session writes)
+    - `moodify_context`: Durable context snapshot (shielded from private session writes; atomically protected upon exit)
   - **Proactivity Runtime Counter Storage**:
-    - `moodify_proactive_runtime`: Tracks `{ date: string, count: number }` to enforce true daily frequency limits across reloads.
+    - `moodify_proactive_runtime`: Tracks `{ date: string, count: number }` to enforce true daily frequency limits across reloads. Date authority is strictly browser-local (`PROACTIVE_DATE_AUTHORITY = LOCAL_BROWSER_CALENDAR_DATE`) using `getLocalDateKey()`, synchronizing daily reset with local midnight and quiet hours.
 - **Application-Level Encryption Status**: `APPLICATION_LEVEL_ENCRYPTION_IMPLEMENTED = false`. The UI explicitly displays `NOT IMPLEMENTED IN LOCAL PROTOTYPE` for application-level encryption.
 - **Secret Management Status**: `SERVER_SECRET_VAULT_IMPLEMENTED = false`. Because no backend application server exists in the prototype, external API keys and secrets are neither hosted server-side nor stored in the client. External integration adapters operate in simulated `MOCK` mode.
 

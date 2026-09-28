@@ -1,6 +1,6 @@
 # Moodify Phase 2 Review
 
-*Document Version: Phase 2-R3 Final Edge-Case Closure*  
+*Document Version: Phase 2-R4 Atomic Privacy & Local-Day Closure*  
 *Target Reviewer: Founder & Lead Architect Review*  
 *Standard: Exact-SHA source code and runtime behavior verification.*
 
@@ -10,7 +10,7 @@
 
 Moodify has completed an independent Prototype Trust Alignment, edge-case closure, and hardening pass. The objective was not to expand scope, build production backends, or connect third-party APIs, but to independently verify every technical claim, eliminate prototype-level truth defects, seal ephemeral session reload boundaries, establish honest documentation boundaries, and calibrate source truth for founder evaluation.
 
-The application stands confirmed as an honest, fully disclosed, client-side functional vision prototype. All core pillars—**Personal Context Calculation**, **Personal Context Firewall**, **Memory Vault Lifecycle**, **Deterministic Recommendation Scoring**, and **Gated Action Execution**—operate with verifiable local logic. Every external integration is truthfully tagged `MOCK`, calendar sync is strictly verified as local-only (`isCalendarSynced = false`), proactive settings and daily dispatch counts are persisted and capped, private sessions cannot contaminate durable context even across page reloads, encryption truth is honestly stated (`APPLICATION_LEVEL_ENCRYPTION_IMPLEMENTED = false`), and no live Gemini API calls are fabricated (`LIVE_GEMINI_CALL_COUNT = 0`).
+The application stands confirmed as an honest, fully disclosed, client-side functional vision prototype. All core pillars—**Personal Context Calculation**, **Personal Context Firewall**, **Memory Vault Lifecycle**, **Deterministic Recommendation Scoring**, and **Gated Action Execution**—operate with verifiable local logic. Every external integration is truthfully tagged `MOCK`, calendar sync is strictly verified as local-only (`isCalendarSynced = false`), proactive settings and daily dispatch counts are persisted and capped under local calendar day authority (`PROACTIVE_DATE_AUTHORITY = LOCAL_BROWSER_CALENDAR_DATE`), private sessions cannot contaminate durable context even across page reloads or during atomic exit transitions (`PRIVATE_SESSION_EXIT_ATOMIC = true`, `PRIVATE_CONTEXT_TRANSIENT_DURABLE_WRITE = false`), encryption truth is honestly stated (`APPLICATION_LEVEL_ENCRYPTION_IMPLEMENTED = false`), and no live Gemini API calls are fabricated (`LIVE_GEMINI_CALL_COUNT = 0`).
 
 ---
 
@@ -24,7 +24,7 @@ The application stands confirmed as an honest, fully disclosed, client-side func
 6. **Taste Graph Feedback Loop**: `TasteGraphService.ts` updates node relations (`LOVES`, `LIKES`, `AVOIDS`, `SAVED`, `HAS_TRIED`), adjusts strength weights, and records recency dates based on recommendation feedback.
 7. **Deterministic Recommendation Scoring**: Explainable mathematical formula in `RecommendationService.ts` evaluating taste match (35%), context match (30%), constraint match (20%), exploration novelty (15%), recency adjustment, and repetition penalties.
 8. **Exploration Factor Slider**: Runtime slider (0.0 to 1.0) dynamically shifting recommendation ranking between familiar comfort items and novel serendipity items.
-9. **Private Session Enforcement & Reload-Safe Context Isolation**: When enabled, candidate extraction is disabled, durable memory writes are blocked, taste learning is suppressed, and durable `localStorage['moodify_context']` is shielded from private session mutations. Pre-private context is safely preserved and restored across browser reloads.
+9. **Private Session Enforcement, Atomic Exit & Reload-Safe Context Isolation**: When enabled, candidate extraction is disabled, durable memory writes are blocked, taste learning is suppressed, and durable `localStorage['moodify_context']` is shielded from private session mutations. Pre-private context is safely preserved and restored across browser reloads, and session exit is atomic with zero transient durable writes.
 10. **Action Risk Taxonomy & Confirmation**: 5-tier risk taxonomy requiring explicit user authorization for consequential actions (`EXTERNAL_WRITE`, `PURCHASE_OR_BOOKING`, `SENSITIVE_ACTION`).
 11. **Plans Interactivity**: Item creation, category filtering, and interactive checklist toggling in `PlansView.tsx`.
 12. **Local Browser Persistence**: Seven-key `localStorage` synchronization ensuring user modifications and true daily frequency caps survive browser refreshes.
@@ -103,7 +103,7 @@ All conversational responses, why-this reasoning displays, context updates, and 
 1. **Personal Context Firewall**: When a task executes, `PersonalContextFirewall.filterContextForTask` evaluates the task intent against candidate memories.
 2. **Minimal-Purpose Assembly**: Only domain-essential memories are admitted (e.g. food + budget for dining). Unrelated domains (work, travel, relationships, music) are excluded with explicit justifications.
 3. **Sensitivity Gating**: `HIGHLY_SENSITIVE` records are blocked unless explicitly queried.
-4. **Private Session & Reload-Safe Context Isolation**: Toggleable in Privacy Center or header; when active, candidate extraction is disabled, vault commits are blocked, taste learning is bypassed, and durable context in `localStorage` is guarded from leakage across reloads.
+4. **Private Session, Atomic Exit & Reload-Safe Context Isolation**: Toggleable in Privacy Center or header; when active, candidate extraction is disabled, vault commits are blocked, taste learning is bypassed, and durable context in `localStorage` is guarded from leakage across reloads. Session exit is handled atomically with a restore guard ref (`PRIVATE_SESSION_EXIT_ATOMIC = true`, `PRIVATE_CONTEXT_TRANSIENT_DURABLE_WRITE = false`), ensuring pre-private context is restored without any transient durable writes.
 5. **Developer Audit Log**: The Context Firewall tab displays the live audit trail with the exact 6 fields: `TASK`, `REQUESTED_CONTEXT_CATEGORIES`, `SELECTED_MEMORIES`, `EXCLUDED_MEMORIES`, `EXCLUSION_REASON`, and `SENSITIVE_DATA_BLOCKED`.
 6. **Application Encryption Disclosure**: UI explicitly discloses `APPLICATION_LEVEL_ENCRYPTION_IMPLEMENTED = false` as `NOT IMPLEMENTED IN LOCAL PROTOTYPE`.
 
@@ -123,7 +123,7 @@ All conversational responses, why-this reasoning displays, context updates, and 
 
 ## HOW PROACTIVITY CURRENTLY WORKS
 
-1. **True Date-Aware Daily Limit**: Starts at `0`, tracks current calendar date in `moodify_proactive_runtime`, and automatically resets count when the date advances.
+1. **True Date-Aware Daily Limit**: Starts at `0`, tracks local browser calendar date via `getLocalDateKey()` in `moodify_proactive_runtime` (`PROACTIVE_DATE_AUTHORITY = LOCAL_BROWSER_CALENDAR_DATE`), and automatically resets count when the local date advances at midnight.
 2. **Persistent Frequency Cap**: Dispatch count survives browser reloads; cannot be bypassed by refreshing the page.
 3. **Authoritative Max Limit**: Strictly enforces `effectiveMax = min(settings.maxPingsPerDay, modeSafetyCap)` where QUIET=0, BALANCED=3, COMPANION=5. User maximum cannot be exceeded.
 4. **Quiet Hours**: Compares client system time against configured schedule (e.g. 22:00 to 08:00); outbound pings are blocked during quiet hours.
@@ -172,6 +172,8 @@ All conversational responses, why-this reasoning displays, context updates, and 
 14. **Privacy Model Truth Separation**: Distinctly separated current prototype truth from future production architecture in `PRIVACY_MODEL.md`.
 15. **Private Session Reload Safety**: Resolved reload edge case; pre-private context snapshot is safely preserved and restored across browser reloads, preventing private context from ever becoming durable.
 16. **True Daily Proactive Limit Runtime Persistence**: Persisted runtime ping count in `moodify_proactive_runtime`, ensuring reload cannot bypass the daily frequency cap.
+17. **Atomic Private Session Exit & Zero Transient Durable Writes**: Sealed the transient persistence race during private session exit (`true → false`). Replaced competing render effects with an atomic transition handler in `updatePrivacySettings` and an `isRestoringFromPrivateRef` guard, guaranteeing `PRIVATE_CONTEXT_EVER_WRITTEN_DURING_EXIT = false`.
+18. **Local Calendar Day Temporal Authority for Daily Proactivity**: Unified temporal authorities between Quiet Hours and daily proactive notification caps using deterministic `getLocalDateKey()`, eliminating UTC vs local date drift.
 
 ---
 

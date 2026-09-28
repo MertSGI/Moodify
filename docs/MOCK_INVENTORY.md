@@ -1,6 +1,6 @@
 # Moodify Mock & Simulation Inventory
 
-*Document Version: Phase 2-R3 Final Edge-Case Closure*  
+*Document Version: Phase 2-R4 Atomic Privacy & Local-Day Closure*  
 *Standard: Complete architectural disclosure of all synthetic data, fixtures, simulated delays, and local abstractions.*
 
 ---
@@ -108,7 +108,8 @@ Below is an exhaustive inventory of every mock, fixture, simulated delay, and lo
 - **Why it Exists**: Demonstrates non-manipulative proactive check-in UI (`isProactive: true`, origin pill, suggested replies) within a single browser session.
 - **Daily Frequency Limit & Runtime State**:
   - Runtime dispatch tracker persisted under `moodify_proactive_runtime` storing `{ date: "YYYY-MM-DD", count: number }`.
-  - Date-aware reset on calendar day change (resets `count: 0` if stored date != current date).
+  - **Local Calendar Day Date Authority**: `PROACTIVE_DATE_AUTHORITY = LOCAL_BROWSER_CALENDAR_DATE`. Uses `ProactiveService.getLocalDateKey()` (browser-local year, month, and day) instead of UTC `toISOString()`, unifying the temporal authority of Quiet Hours and daily notification limit reset at local midnight.
+  - Date-aware reset on local calendar day change (resets `count: 0` if stored date != current local date).
   - Strictly enforces `effectiveMax = min(settings.maxPingsPerDay, modeSafetyCap)` (Quiet: 0, Balanced: 3, Companion: 5).
   - **Survives Browser Reload**: Cannot be bypassed by refreshing the page.
 - **User Settings Persistence**: User adjustments to proactivity intensity mode (`QUIET`, `BALANCED`, `COMPANION`), quiet hours, and category toggles persist separately in browser storage under `moodify_proactive_settings`.
@@ -135,9 +136,9 @@ Below is an exhaustive inventory of every mock, fixture, simulated delay, and lo
     3. `moodify_plans`: Saved action plans and checklists.
     4. `moodify_privacy_settings`: User privacy configurations.
     5. `moodify_proactive_settings`: Companion proactivity intensity and schedule preferences.
-    6. `moodify_context`: Durable context snapshot (shielded from private session mutations; pre-private context is restored upon session exit and survives reload).
+    6. `moodify_context`: Durable context snapshot (shielded from private session mutations; pre-private context is restored upon session exit atomically with zero transient durable writes via restore guard, and survives reload).
   - **Proactivity Runtime Counter Storage (1 key)**:
-    7. `moodify_proactive_runtime`: Runtime frequency state `{ date: string, count: number }` enforcing the true daily dispatch cap across browser reloads.
+    7. `moodify_proactive_runtime`: Runtime frequency state `{ date: string, count: number }` enforcing the true daily dispatch cap across browser reloads using local calendar day authority (`getLocalDateKey()`).
 - **Why it Exists**: Guarantees that evaluator actions (adding a memory, editing preferences, toggling proactivity settings, deleting records, saving plans) survive page refreshes and browser reloads on the same machine, without requiring a remote database server.
 - **Where Implemented**: `src/context/AppContext.tsx` (`useEffect` sync and state initializers), `src/services/proactiveService.ts`.
 - **Production Replacement**: Remote authenticated database backend (PostgreSQL with Drizzle ORM or Firebase Firestore) with optimistic client cache and real-time syncing.
@@ -157,4 +158,7 @@ Below is an exhaustive inventory of every mock, fixture, simulated delay, and lo
 9. **`SERVER_SECRET_VAULT_IMPLEMENTED = false`**: No server backend exists in local prototype.
 10. **`CRISIS_RESPONSE_FLOW_IMPLEMENTED = false`**: Clinical terms filtered via regex; no automated crisis escalation pipeline.
 11. **`PROACTIVE_RUNTIME_PERSISTED = true`**: Frequency cap persists in `moodify_proactive_runtime` across browser refreshes.
-12. **`PRIVATE_SESSION_RELOAD_SAFE = true`**: Pre-private context snapshot is preserved across reload; private session context never leaks into durable storage.
+12. **`PROACTIVE_DATE_AUTHORITY = LOCAL_BROWSER_CALENDAR_DATE`**: Daily limit reset uses local browser calendar day via `getLocalDateKey()`, matching local quiet hours.
+13. **`PRIVATE_SESSION_RELOAD_SAFE = true`**: Pre-private context snapshot is preserved across reload; private session context never leaks into durable storage.
+14. **`PRIVATE_SESSION_EXIT_ATOMIC = true`**: Private session exit atomically restores pre-private context snapshot and disables private session in a single coordinated transition.
+15. **`PRIVATE_CONTEXT_TRANSIENT_DURABLE_WRITE = false`**: Generic context persistence is guarded from ever writing private context to durable storage during session exit.

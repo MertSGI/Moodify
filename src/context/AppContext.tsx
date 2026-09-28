@@ -183,36 +183,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   })();
 
   const prePrivateContextRef = useRef<ContextSnapshot | null>(initialPrePrivateContext);
-  const prevPrivateSessionRef = useRef<boolean>(privacySettings.isPrivateSession);
-
-  // Monitor Private Session transitions to preserve and restore durable context
-  useEffect(() => {
-    const wasPrivate = prevPrivateSessionRef.current;
-    const isPrivate = privacySettings.isPrivateSession;
-    prevPrivateSessionRef.current = isPrivate;
-
-    if (!wasPrivate && isPrivate) {
-      // Private session starts: preserve the pre-private-session durable context
-      prePrivateContextRef.current = context;
-    } else if (wasPrivate && !isPrivate) {
-      // Private session ends: restore the pre-private-session durable context
-      const restored = prePrivateContextRef.current || (() => {
-        try {
-          const stored = localStorage.getItem('moodify_context');
-          return stored ? JSON.parse(stored) : INITIAL_CONTEXT;
-        } catch {
-          return INITIAL_CONTEXT;
-        }
-      })();
-      if (restored) {
-        setContext(restored);
-        try {
-          localStorage.setItem('moodify_context', JSON.stringify(restored));
-        } catch {}
-        prePrivateContextRef.current = null;
-      }
-    }
-  }, [privacySettings.isPrivateSession]);
+  // Restore guard ref: explicitly prevents generic context persistence from writing private context during exit
+  const isRestoringFromPrivateRef = useRef<boolean>(false);
 
   // Local storage synchronization (functional browser persistence)
   useEffect(() => {
@@ -245,8 +217,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {}
   }, [proactiveSettings]);
 
-  // Context persistence: NEVER write to durable localStorage while private session is active
+  // Context persistence: NEVER write to durable localStorage while private session is active,
+  // and guard against transient execution during atomic private session exit.
   useEffect(() => {
+    if (isRestoringFromPrivateRef.current) {
+      isRestoringFromPrivateRef.current = false;
+      return;
+    }
     if (!privacySettings.isPrivateSession) {
       try {
         localStorage.setItem('moodify_context', JSON.stringify(context));
@@ -270,6 +247,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.removeItem('moodify_context');
     } catch {}
     prePrivateContextRef.current = null;
+    isRestoringFromPrivateRef.current = false;
     ProactiveService.resetPingsSentToday();
     setMemories(SEED_MEMORIES);
     setTasteNodes(SEED_TASTE_NODES);
@@ -505,7 +483,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updatePrivacySettings = (settings: Partial<PrivacySettings>) => {
-    setPrivacySettings(prev => ({ ...prev, ...settings }));
+    // Intercept Private Session transitions to guarantee atomic isolation and prevent transient durable writes
+    if (settings.isPrivateSession !== undefined && settings.isPrivateSession !== privacySettings.isPrivateSession) {
+      if (settings.isPrivateSession) {
+        // ENTER PRIVATE SESSION
+        // 1. Preserve current durable context A in prePrivateContextRef
+        prePrivateContextRef.current = context;
+        // 2. Set isPrivateSession = true (generic context persistence remains disabled during private mode)
+        setPrivacySettings(prev => ({ ...prev, ...settings }));
+      } else {
+        // EXIT PRIVATE SESSION ATOMICALLY
+        // 1. Resolve restored context A from prePrivateContextRef or durable moodify_context fallback
+        const restored = prePrivateContextRef.current || (() => {
+          try {
+            const stored = localStorage.getItem('moodify_context');
+            return stored ? JSON.parse(stored) : INITIAL_CONTEXT;
+          } catch {
+            return INITIAL_CONTEXT;
+          }
+        })();
+
+        // 2. Arm restore guard ref so generic persistence cannot write private context C during transition
+        isRestoringFromPrivateRef.current = true;
+
+        // 3. Immediately and synchronously write restored context A to durable moodify_context
+        try {
+          localStorage.setItem('moodify_context', JSON.stringify(restored));
+        } catch {}
+
+        // 4. Clear prePrivateContextRef
+        prePrivateContextRef.current = null;
+
+        // 5. Update React context to restored A
+        setContext(restored);
+
+        // 6. Set isPrivateSession = false in the same logical transition
+        setPrivacySettings(prev => ({ ...prev, ...settings }));
+      }
+    } else {
+      setPrivacySettings(prev => ({ ...prev, ...settings }));
+    }
   };
 
   const updateProactiveSettings = (settings: Partial<ProactiveSetting>) => {

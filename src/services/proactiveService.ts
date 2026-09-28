@@ -15,11 +15,23 @@ export class ProactiveService {
   public static readonly RUNTIME_STORAGE_KEY = 'moodify_proactive_runtime';
 
   /**
+   * Deterministic helper returning browser-local calendar date in YYYY-MM-DD format.
+   * Uses local getFullYear(), getMonth() + 1, and getDate() with zero-padding.
+   * Ensures proactive daily notification limits and local Quiet Hours share the same temporal authority.
+   */
+  public static getLocalDateKey(date: Date = new Date()): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  /**
    * Loads current daily runtime frequency state from localStorage.
-   * Automatically resets count to 0 if the calendar date has changed.
+   * Automatically resets count to 0 if the local calendar date has changed.
    */
   private static getRuntimeState(): ProactiveRuntimeState {
-    const today = new Date().toISOString().split('T')[0];
+    const today = this.getLocalDateKey();
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
         const stored = localStorage.getItem(this.RUNTIME_STORAGE_KEY);
@@ -211,7 +223,7 @@ export class ProactiveService {
   }
 
   public static resetPingsSentToday(): void {
-    const today = new Date().toISOString().split('T')[0];
+    const today = this.getLocalDateKey();
     this.saveRuntimeState({ date: today, count: 0 });
   }
 }
