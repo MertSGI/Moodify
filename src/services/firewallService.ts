@@ -26,6 +26,24 @@ export class PersonalContextFirewall {
         timestamp: new Date().toISOString(),
         targetService,
         evaluatedMemoriesCount: candidateMemories.length,
+        task: taskIntent,
+        requestedContextCategories: [],
+        selectedMemories: [],
+        excludedMemories: candidateMemories.map(m => ({
+          id: m.id,
+          key: m.key,
+          category: m.category,
+          exclusionReason: 'Master personalization is disabled in Privacy Center',
+        })),
+        sensitiveDataBlocked: candidateMemories
+          .filter(m => m.sensitivity === 'HIGHLY_SENSITIVE' || m.sensitivity === 'SENSITIVE')
+          .map(m => ({
+            id: m.id,
+            key: m.key,
+            category: m.category,
+            sensitivity: m.sensitivity,
+            reason: 'Master personalization is disabled in Privacy Center',
+          })),
         admittedMemories: [],
         redactedMemories: candidateMemories.map(m => ({
           id: m.id,
@@ -42,53 +60,98 @@ export class PersonalContextFirewall {
 
     const intentLower = taskIntent.toLowerCase();
 
+    // Determine target requested categories based on task classification
+    let requestedCategories: string[] = [];
+    if (intentLower.includes('snack') || intentLower.includes('food') || intentLower.includes('eat') || intentLower.includes('ramen') || intentLower.includes('dinner') || intentLower.includes('lunch') || intentLower.includes('inexpensive')) {
+      requestedCategories = ['food', 'dislikes', 'budget_preferences'];
+    } else if (intentLower.includes('movie') || intentLower.includes('film') || intentLower.includes('watch') || intentLower.includes('music') || intentLower.includes('song') || intentLower.includes('listen') || intentLower.includes('concert') || intentLower.includes('show')) {
+      requestedCategories = ['music', 'movies_tv', 'places', 'routines'];
+    } else if (intentLower.includes('awful') || intentLower.includes('tired') || intentLower.includes('exhausted') || intentLower.includes('stress') || intentLower.includes('rough')) {
+      requestedCategories = ['music', 'movies_tv', 'boundaries', 'routines', 'dislikes'];
+    } else if (intentLower.includes('work') || intentLower.includes('meeting') || intentLower.includes('review') || intentLower.includes('marcus') || intentLower.includes('calendar') || intentLower.includes('friday')) {
+      requestedCategories = ['work', 'important_dates', 'identity', 'boundaries'];
+    } else {
+      requestedCategories = ['identity', 'communication_preferences', 'boundaries'];
+    }
+
+    const selectedMemories: FirewallDecision['selectedMemories'] = [];
+    const excludedMemories: FirewallDecision['excludedMemories'] = [];
+    const sensitiveDataBlocked: FirewallDecision['sensitiveDataBlocked'] = [];
+
     for (const memory of candidateMemories) {
       // 1. Check if category is blocked by user
       if (privacySettings.blockedCategories.includes(memory.category)) {
+        const reason = `Category "${memory.category}" is blocked by user privacy rule`;
         redactedSummaries.push({
           id: memory.id,
           key: memory.key,
           sensitivity: memory.sensitivity,
-          redactionReason: `Category "${memory.category}" is blocked by user privacy rule`,
+          redactionReason: reason,
+        });
+        excludedMemories.push({
+          id: memory.id,
+          key: memory.key,
+          category: memory.category,
+          exclusionReason: reason,
         });
         continue;
       }
 
       // 2. Check memory status
       if (memory.status !== 'ACTIVE') {
+        const reason = `Memory status is ${memory.status}`;
         redactedSummaries.push({
           id: memory.id,
           key: memory.key,
           sensitivity: memory.sensitivity,
-          redactionReason: `Memory status is ${memory.status}`,
+          redactionReason: reason,
+        });
+        excludedMemories.push({
+          id: memory.id,
+          key: memory.key,
+          category: memory.category,
+          exclusionReason: reason,
         });
         continue;
       }
 
       // 3. Check tool/recommender authorization
       if (targetService === 'EXTERNAL_TOOL' && !memory.allowedForExternalTools) {
+        const reason = 'External tool export disallowed on this memory record';
         redactedSummaries.push({
           id: memory.id,
           key: memory.key,
           sensitivity: memory.sensitivity,
-          redactionReason: 'External tool export disallowed on this memory record',
+          redactionReason: reason,
+        });
+        excludedMemories.push({
+          id: memory.id,
+          key: memory.key,
+          category: memory.category,
+          exclusionReason: reason,
         });
         continue;
       }
 
       if (targetService === 'RECOMMENDER' && !memory.allowedForPersonalization) {
+        const reason = 'Recommendation personalization disallowed on this record';
         redactedSummaries.push({
           id: memory.id,
           key: memory.key,
           sensitivity: memory.sensitivity,
-          redactionReason: 'Recommendation personalization disallowed on this record',
+          redactionReason: reason,
+        });
+        excludedMemories.push({
+          id: memory.id,
+          key: memory.key,
+          category: memory.category,
+          exclusionReason: reason,
         });
         continue;
       }
 
       // 4. Sensitivity gating
       if (memory.sensitivity === 'HIGHLY_SENSITIVE') {
-        // Highly sensitive memories are NEVER admitted unless task explicitly asks about them
         const isExplicitlyRequested =
           intentLower.includes('family') ||
           intentLower.includes('surgery') ||
@@ -96,11 +159,25 @@ export class PersonalContextFirewall {
           intentLower.includes(memory.key.toLowerCase());
 
         if (!isExplicitlyRequested) {
+          const reason = 'Highly sensitive item omitted: not strictly necessary for this task';
           redactedSummaries.push({
             id: memory.id,
             key: memory.key,
             sensitivity: memory.sensitivity,
-            redactionReason: 'Highly sensitive item omitted: not strictly necessary for this task',
+            redactionReason: reason,
+          });
+          excludedMemories.push({
+            id: memory.id,
+            key: memory.key,
+            category: memory.category,
+            exclusionReason: reason,
+          });
+          sensitiveDataBlocked.push({
+            id: memory.id,
+            key: memory.key,
+            category: memory.category,
+            sensitivity: memory.sensitivity,
+            reason,
           });
           continue;
         }
@@ -108,11 +185,25 @@ export class PersonalContextFirewall {
 
       if (memory.sensitivity === 'SENSITIVE' && !privacySettings.allowSensitiveMemoriesForRecommendations) {
         if (targetService === 'RECOMMENDER' || targetService === 'EXTERNAL_TOOL') {
+          const reason = 'Sensitive memories for recommendations is toggled off in Privacy Center';
           redactedSummaries.push({
             id: memory.id,
             key: memory.key,
             sensitivity: memory.sensitivity,
-            redactionReason: 'Sensitive memories for recommendations is toggled off in Privacy Center',
+            redactionReason: reason,
+          });
+          excludedMemories.push({
+            id: memory.id,
+            key: memory.key,
+            category: memory.category,
+            exclusionReason: reason,
+          });
+          sensitiveDataBlocked.push({
+            id: memory.id,
+            key: memory.key,
+            category: memory.category,
+            sensitivity: memory.sensitivity,
+            reason,
           });
           continue;
         }
@@ -130,12 +221,25 @@ export class PersonalContextFirewall {
           sensitivity: memory.sensitivity,
           justification: isDomainRelevant.justification,
         });
+        selectedMemories.push({
+          id: memory.id,
+          key: memory.key,
+          category: memory.category,
+          value: memory.value,
+          justification: isDomainRelevant.justification,
+        });
       } else {
         redactedSummaries.push({
           id: memory.id,
           key: memory.key,
           sensitivity: memory.sensitivity,
           redactionReason: isDomainRelevant.justification,
+        });
+        excludedMemories.push({
+          id: memory.id,
+          key: memory.key,
+          category: memory.category,
+          exclusionReason: isDomainRelevant.justification,
         });
       }
     }
@@ -146,6 +250,11 @@ export class PersonalContextFirewall {
       timestamp: new Date().toISOString(),
       targetService,
       evaluatedMemoriesCount: candidateMemories.length,
+      task: taskIntent,
+      requestedContextCategories: requestedCategories,
+      selectedMemories,
+      excludedMemories,
+      sensitiveDataBlocked,
       admittedMemories: admittedSummaries,
       redactedMemories: redactedSummaries,
       wasSanitized: redactedSummaries.length > 0,

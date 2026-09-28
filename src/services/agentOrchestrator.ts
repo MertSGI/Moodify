@@ -186,6 +186,40 @@ export class AgentOrchestrator {
       ];
     }
 
+    // SCENARIO C2: FOOD / INEXPENSIVE DINNER (Section 7 Firewall Test)
+    else if (
+      textLower.includes('inexpensive') ||
+      textLower.includes('something to eat') ||
+      textLower.includes('what to eat') ||
+      textLower.includes('dinner tonight') ||
+      textLower.includes('dinner') ||
+      textLower.includes('comfort food') ||
+      textLower.includes('favorite comfort food')
+    ) {
+      // Find food or comfort food preference from admitted memories
+      const comfortFoodMem = admittedMemories.find(m => m.category === 'food');
+      const budgetMem = admittedMemories.find(m => m.category === 'budget_preferences');
+
+      const foodDetail = comfortFoodMem ? `your preference for ${comfortFoodMem.value}` : 'comfort food';
+      const budgetDetail = budgetMem ? `keeping it under budget (${budgetMem.value})` : 'keeping it casual and inexpensive';
+
+      responseText = `I checked your preferences through the Context Firewall (${admittedMemories.length} relevant food & budget constraints admitted, unrelated work, travel, and personal domains withheld).\n\nBased on ${foodDetail} and ${budgetDetail}, here is a warm, comforting dinner pick for tonight:`;
+
+      const foodRec = allRecommendations.find(r => r.category === 'food' || r.id === 'rec_05') || allRecommendations[4];
+
+      cards.push({
+        type: 'RECOMMENDATION',
+        recommendations: [foodRec],
+        title: 'Comfort Dinner Match (Under Budget)',
+      });
+
+      suggestedReplies = [
+        'Save this to my Evening Plan.',
+        'Why did you recommend this specific spot?',
+        'Show me the firewall context breakdown.',
+      ];
+    }
+
     // SCENARIO D: FOLLOW-UP ON DESIGN REVIEW
     else if (
       textLower.includes('marcus') ||

@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { MemoryItem, MemoryDomain, MemorySensitivity } from '../types/memory';
 import { MemoryEditModal } from './modals/MemoryEditModal';
+import { ProactiveService } from '../services/proactiveService';
 
 export const YouView: React.FC = () => {
   const {
@@ -43,6 +44,7 @@ export const YouView: React.FC = () => {
     exportPersonalData,
     proactiveSettings,
     updateProactiveSettings,
+    resetToSeedData,
   } = useApp();
 
   const [activeSubTab, setActiveSubTab] = useState<
@@ -126,6 +128,17 @@ export const YouView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              if (confirm('Reset entire prototype state to initial seed fixtures?')) {
+                resetToSeedData();
+              }
+            }}
+            className="px-3.5 py-2 rounded-xl bg-stone-900 hover:bg-stone-850 text-stone-400 hover:text-stone-200 text-xs font-medium border border-stone-800 transition-colors"
+            title="Reset memories, plans, and taste graph to factory seed defaults"
+          >
+            Reset to Seed Defaults
+          </button>
           <button
             onClick={exportPersonalData}
             className="px-3.5 py-2 rounded-xl bg-stone-900 hover:bg-stone-850 text-stone-300 text-xs font-medium border border-stone-800 transition-colors flex items-center gap-1.5"
@@ -431,48 +444,105 @@ export const YouView: React.FC = () => {
                       </div>
                     </div>
 
-                    <p className="text-xs font-semibold text-stone-200">
-                      Task: <span className="font-normal text-stone-300">"{log.taskIntent}"</span>
-                    </p>
+                    <div className="space-y-1.5 pt-1">
+                      <div className="text-xs">
+                        <span className="font-mono text-stone-400 font-semibold uppercase text-[10px] block">
+                          TASK
+                        </span>
+                        <span className="text-stone-100 font-medium">"{log.task || log.taskIntent}"</span>
+                      </div>
+
+                      <div className="text-xs">
+                        <span className="font-mono text-stone-400 font-semibold uppercase text-[10px] block">
+                          REQUESTED_CONTEXT_CATEGORIES
+                        </span>
+                        <div className="flex flex-wrap gap-1.5 mt-0.5">
+                          {log.requestedContextCategories && log.requestedContextCategories.length > 0 ? (
+                            log.requestedContextCategories.map((cat, cIdx) => (
+                              <span
+                                key={cIdx}
+                                className="px-2 py-0.5 rounded font-mono text-[10px] bg-stone-800 text-sky-300 border border-stone-700"
+                              >
+                                {cat}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-[11px] text-stone-500">None (Task sanitized or blocked)</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
-                      {/* Admitted */}
-                      <div className="p-3.5 rounded-2xl bg-emerald-950/20 border border-emerald-900/30 space-y-1.5">
-                        <span className="font-semibold text-emerald-300 block">
-                          Admitted ({log.admittedMemories.length})
+                      {/* SELECTED_MEMORIES */}
+                      <div className="p-3.5 rounded-2xl bg-emerald-950/20 border border-emerald-900/30 space-y-2">
+                        <span className="font-semibold text-emerald-300 block text-xs">
+                          SELECTED_MEMORIES ({log.selectedMemories?.length || log.admittedMemories.length})
                         </span>
-                        {log.admittedMemories.length === 0 ? (
+                        {(!log.selectedMemories || log.selectedMemories.length === 0) && log.admittedMemories.length === 0 ? (
                           <span className="text-[11px] text-stone-500 italic">None admitted</span>
                         ) : (
-                          <div className="space-y-1">
-                            {log.admittedMemories.map((adm, aIdx) => (
-                              <div key={aIdx} className="text-[11px] text-stone-300">
-                                <strong className="text-emerald-400">{adm.key}:</strong> {adm.justification}
+                          <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                            {(log.selectedMemories || log.admittedMemories).map((adm, aIdx) => (
+                              <div key={aIdx} className="text-[11px] text-stone-300 p-2 rounded-xl bg-stone-900/60 border border-emerald-950">
+                                <div className="flex items-center justify-between mb-0.5">
+                                  <strong className="text-emerald-400 font-mono text-[10px]">{adm.key}</strong>
+                                  <span className="text-[10px] text-stone-400 capitalize">
+                                    {(adm as any).category || (adm as any).domain}
+                                  </span>
+                                </div>
+                                {(adm as any).value && (
+                                  <p className="text-stone-300 text-[11px] line-clamp-2">"{(adm as any).value}"</p>
+                                )}
+                                <p className="text-[10px] text-stone-400 italic mt-0.5">{adm.justification}</p>
                               </div>
                             ))}
                           </div>
                         )}
                       </div>
 
-                      {/* Redacted */}
-                      <div className="p-3.5 rounded-2xl bg-rose-950/20 border border-rose-900/30 space-y-1.5">
-                        <span className="font-semibold text-rose-300 block">
-                          Redacted / Blocked ({log.redactedMemories.length})
+                      {/* EXCLUDED_MEMORIES + SENSITIVE_DATA_BLOCKED */}
+                      <div className="p-3.5 rounded-2xl bg-rose-950/20 border border-rose-900/30 space-y-2">
+                        <span className="font-semibold text-rose-300 block text-xs">
+                          EXCLUDED_MEMORIES ({log.excludedMemories?.length || log.redactedMemories.length})
                         </span>
-                        {log.redactedMemories.length === 0 ? (
+                        {(!log.excludedMemories || log.excludedMemories.length === 0) && log.redactedMemories.length === 0 ? (
                           <span className="text-[11px] text-stone-500 italic">None redacted</span>
                         ) : (
-                          <div className="space-y-1">
-                            {log.redactedMemories.slice(0, 3).map((red, rIdx) => (
-                              <div key={rIdx} className="text-[11px] text-stone-300">
-                                <strong className="text-rose-400">{red.key}:</strong> {red.redactionReason}
+                          <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                            {(log.excludedMemories || log.redactedMemories).map((red, rIdx) => (
+                              <div key={rIdx} className="text-[11px] text-stone-300 p-2 rounded-xl bg-stone-900/60 border border-rose-950">
+                                <div className="flex items-center justify-between mb-0.5">
+                                  <strong className="text-rose-400 font-mono text-[10px]">{red.key}</strong>
+                                  <span className="text-[10px] text-stone-400">
+                                    {(red as any).category || 'domain withheld'}
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-stone-400">
+                                  <strong className="text-rose-300">EXCLUSION_REASON:</strong> {(red as any).exclusionReason || (red as any).redactionReason}
+                                </p>
                               </div>
                             ))}
-                            {log.redactedMemories.length > 3 && (
-                              <span className="text-[10px] text-stone-500">
-                                + {log.redactedMemories.length - 3} more unrelated domains withheld
-                              </span>
-                            )}
+                          </div>
+                        )}
+
+                        {/* SENSITIVE_DATA_BLOCKED Badge */}
+                        {log.sensitiveDataBlocked && log.sensitiveDataBlocked.length > 0 && (
+                          <div className="pt-2 border-t border-rose-900/40">
+                            <span className="text-[10px] uppercase font-mono font-bold text-rose-400 block mb-1">
+                              SENSITIVE_DATA_BLOCKED ({log.sensitiveDataBlocked.length})
+                            </span>
+                            <div className="flex flex-wrap gap-1">
+                              {log.sensitiveDataBlocked.map((sens, sIdx) => (
+                                <span
+                                  key={sIdx}
+                                  className="px-2 py-0.5 rounded text-[10px] font-mono bg-rose-900/30 text-rose-300 border border-rose-800/40"
+                                  title={sens.reason}
+                                >
+                                  {sens.key} ({sens.sensitivity})
+                                </span>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -719,6 +789,49 @@ export const YouView: React.FC = () => {
           </div>
 
           <div className="p-6 rounded-3xl bg-stone-900 border border-stone-800 space-y-5">
+            {/* Live Proactivity Status Card */}
+            {(() => {
+              const pingStatus = ProactiveService.canSendProactivePing(proactiveSettings);
+              const count = ProactiveService.getPingsSentTodayCount();
+              const maxCount = ProactiveService.getMaxPingsForMode(proactiveSettings.mode);
+
+              return (
+                <div className="p-4 rounded-2xl bg-stone-850/70 border border-stone-800 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-stone-300">
+                      Live Engine Status & Frequency Guardrail
+                    </span>
+                    <span
+                      className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                        pingStatus.allowed
+                          ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-900/50'
+                          : 'bg-amber-950/60 text-amber-400 border border-amber-900/50'
+                      }`}
+                    >
+                      {pingStatus.allowed ? 'PINGS PERMITTED' : 'PINGS BLOCKED'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <span className="text-stone-400 block text-[11px]">Today's Ping Frequency Cap</span>
+                      <span className="font-mono text-stone-200 font-semibold">
+                        {count} / {maxCount} proactive messages dispatched
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-stone-400 block text-[11px]">Engine Reason / Gate</span>
+                      <span className="text-stone-300">
+                        {pingStatus.allowed
+                          ? 'Active within respectful engagement window'
+                          : pingStatus.reason}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Proactivity Intensity */}
             <div>
               <label className="block text-xs font-semibold text-stone-300 uppercase tracking-wider mb-2">

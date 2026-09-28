@@ -1,0 +1,134 @@
+# Moodify Mock & Simulation Inventory
+
+*Document Version: Phase 2 Prototype Truth Audit*  
+*Standard: Complete architectural disclosure of all synthetic data, fixtures, simulated delays, and local abstractions.*
+
+---
+
+## Overview
+
+The Moodify functional prototype relies on carefully structured client-side mocks and deterministic heuristics to demonstrate the complete user experience—from context detection and memory extraction to taste graph learning and action authorization—without requiring live third-party API accounts, paid LLM credits, or cloud database provisioning during testing.
+
+Below is an exhaustive inventory of every mock, fixture, simulated delay, and local storage state in the codebase.
+
+---
+
+## 1. User Identity & Authentication Mock
+
+- **What is Mocked**: User account (`Alex Chen`, `usr_alex_chen_92`), profile photo, time zone, and role (`Staff Product Designer`).
+- **Why it Exists**: Enables immediate, realistic personalization on first load without forcing the evaluator through a sign-up/login gate.
+- **Where Implemented**: `src/data/seedUser.ts` (`SEED_USER`), rendered in `src/components/Navigation.tsx` and `src/components/YouView.tsx`.
+- **Production Replacement**: Firebase Authentication (or OAuth2 with Google/Apple) storing user records in a secure cloud database (e.g., Cloud SQL PostgreSQL or Firestore) with session JWTs.
+
+---
+
+## 2. Seed Personal Memory Vault
+
+- **What is Mocked**: 13 initial structured memory records covering identity, lakefront running routines, savory food preferences, snack budget ($25 limit), tonkotsu ramen fondness, ambient focus music, intimate indie venue aversion to arenas, cinema taste, partner Maya, Marcus quarterly review, evening quiet boundary, family recovery in Portland, and Kyoto travel memories.
+- **Why it Exists**: Provides an immediate baseline so the user does not have to spend 30 days chatting before experiencing the Personal Context Firewall, memory filtering, and recommendations.
+- **Where Implemented**: `src/data/seedUser.ts` (`SEED_MEMORIES`), managed in `src/context/AppContext.tsx` with browser `localStorage` persistence under key `moodify_memories`.
+- **Production Replacement**: A dedicated Memory Microservice with encrypted vector and relational storage (e.g., PostgreSQL with pgvector or Firestore), supporting automated asynchronous memory formation, confidence decay over time, and user confirmation workflows.
+
+---
+
+## 3. Seed Context & Mood Snapshot
+
+- **What is Mocked**: The initial contextual vector: `valence: 0.1`, `energy: 0.35` (low battery), `stress: 0.65`, `socialNeed: 0.25`, `focusNeed: 0.2`, `primaryState: 'LOW_BATTERY'`, `secondaryState: 'Cognitive fatigue after 4-hour design review'`, `weatherSummary: '62°F, overcast with gentle rain'`, free evening hours: 4.5.
+- **Why it Exists**: Instantiates the "Friday Evening Wind-Down" state, immediately testing the system's sensitivity to cognitive depletion.
+- **Where Implemented**: `src/data/seedUser.ts` (`INITIAL_CONTEXT`), managed in `src/context/AppContext.tsx` with browser `localStorage` persistence under `moodify_context`.
+- **Production Replacement**: Real-time context aggregator ingesting calendar events, local weather APIs (e.g. OpenWeatherMap), activity/sleep telemetry from health platforms (Apple HealthKit / Google Health Connect), and explicit user check-ins.
+
+---
+
+## 4. LLM & Conversational Response Generation
+
+- **What is Mocked**: Generative conversational output. Responses for scenarios (Rough Day, Friday Night Live Show, Savory Snacks, Marcus Review Follow-up, Movie Night, Concert Radar, Comfort Food Under Budget) are orchestrated through rule-based heuristic routing in `AgentOrchestrator`.
+- **Why it Exists**: Guarantees deterministic, reliable demonstration of the agent's tone, structure, why-this citations, and firewall gating during evaluation, without risk of API latency, rate limits, or non-deterministic hallucinations.
+- **Where Implemented**: `src/services/agentOrchestrator.ts` (`AgentOrchestrator.processUserMessage`).
+- **Production Replacement**: Server-side Gemini 2.5 Flash / Pro API calls wrapped with system prompts enforcing minimal-purpose context assembly, zero-manipulation companionship rules, and strict JSON output schemas.
+
+---
+
+## 5. Simulated Agent "Thinking" Latency
+
+- **What is Mocked**: A 500ms delay (`await new Promise(res => setTimeout(res, 500))`) before dispatching agent chat replies.
+- **Why it Exists**: Emulates realistic network and neural inference pacing so the user interface transitions smoothly through the `isThinking` state with animated typing indicators.
+- **Where Implemented**: `src/context/AppContext.tsx` (line 396 in `sendMessage`).
+- **Production Replacement**: Real network round-trip time of streamed Server-Sent Events (SSE) from the backend LLM service.
+
+---
+
+## 6. Seed Taste Graph (Nodes & Edges)
+
+- **What is Mocked**: 9 initial entity nodes (Jon Hopkins, Brian Eno, Severance, Past Lives, Spicy Tonkotsu Ramen, Edamame snacks, etc.) with pre-established strengths and directed affinity edges (`COMPLEMENTS`, `SIMILAR_TO`).
+- **Why it Exists**: Demonstrates the cross-domain taste graph visualization and allows immediate testing of feedback adaptation (e.g. clicking "Not for me" updates a node to `AVOIDS`).
+- **Where Implemented**: `src/data/seedUser.ts` (`SEED_TASTE_NODES`, `SEED_TASTE_EDGES`), updated dynamically by `src/services/tasteService.ts` and persisted in `localStorage` under `moodify_taste_nodes`.
+- **Production Replacement**: A graph database (Neo4j or PostgreSQL graph extension) trained on collaborative filtering, latent entity embeddings, and explicit user preference nodes.
+
+---
+
+## 7. Curated Recommendation Candidate Pool
+
+- **What is Mocked**: High-taste curated items across 7 domains (ambient music, Japanese slow cinema, intimate concerts, savory work snacks, local authentic ramen counter, etc.).
+- **Why it Exists**: Ensures that all recommendations presented during founder inspection meet the aesthetic and architectural standards described in the product thesis.
+- **Where Implemented**: `src/data/seedUser.ts` (`SEED_RECOMMENDATIONS`).
+- **Production Replacement**: Live ingestion adapters connecting to domain-specific catalog APIs (Spotify Catalog API, JustWatch / TMDB API, Bandsintown / Ticketmaster API, Google Places / Yelp Fusion API, Instacart / Shopify Storefront APIs).
+
+---
+
+## 8. Provider Integration Adapters
+
+- **What is Mocked**: Status indicators for 5 external integration providers:
+  - Google Calendar (`MOCK`)
+  - Spotify (`MOCK`)
+  - Apple Music (`MOCK`)
+  - Instacart (`MOCK`)
+  - Bandsintown / Songkick (`MOCK`)
+- **Why it Exists**: Demonstrates the Integrations Hub UI and the progressive disclosure/permission model while explicitly labeling each adapter as `MOCK` rather than falsely claiming live connectivity.
+- **Where Implemented**: `src/data/seedUser.ts` (`SEED_INTEGRATIONS`), `src/components/YouView.tsx` (Integrations tab), `src/types/integrations.ts`.
+- **Production Replacement**: Real OAuth 2.0 integration clients (Google Workspace OAuth with incremental scopes, Spotify Web API PKCE auth, Apple MusicKit tokenization, etc.) executing authenticated read/write transactions.
+
+---
+
+## 9. Calendar Write Execution (Action Engine)
+
+- **What is Mocked**: Placing a calendar hold (e.g., "Japanese Breakfast Presale Alert" at 9:55 AM).
+- **Why it Exists**: Demonstrates the 5-tier Action Risk hierarchy, the mandatory Action Confirmation Modal for `EXTERNAL_WRITE`, and the subsequent creation of an internal plan item.
+- **Where Implemented**: `src/services/actionService.ts` (`executeAction`), `src/components/modals/ActionConfirmModal.tsx`.
+- **Production Replacement**: Google Calendar API `events.insert` endpoint called from an authenticated backend proxy using the user's delegated OAuth token.
+
+---
+
+## 10. Proactive Follow-Up Generator
+
+- **What is Mocked**: In-session proactive message generation (e.g. noticing the 2:00 PM design review with Marcus ended 3 hours ago).
+- **Why it Exists**: Demonstrates non-manipulative proactive check-in UI (`isProactive: true`, origin pill, suggested replies) within a single browser session.
+- **Where Implemented**: `src/services/proactiveService.ts` (`evaluateCandidateProactiveMessage`).
+- **Production Replacement**: A cloud-scheduled background worker (e.g. Cloud Tasks or Celery cron) evaluating calendar webhooks, checking quiet hours schedules, and dispatching Web Push Notifications or mobile push notifications.
+
+---
+
+## 11. Synthetic ID Generation
+
+- **What is Mocked**: Pseudo-random client IDs for memories, actions, and audit logs using `Date.now() + Math.random().toString(36)`.
+- **Why it Exists**: Generates collision-free identifiers for client state management without database auto-incrementing sequences.
+- **Where Implemented**: `src/services/memoryService.ts`, `src/services/firewallService.ts`, `src/services/tasteService.ts`, `src/context/AppContext.tsx`.
+- **Production Replacement**: Server-generated UUIDv4 or KSUID keys assigned upon database write.
+
+---
+
+## 12. Local Browser Storage Persistence
+
+- **What is Mocked**: Persistence mechanism. Data is persisted to client-side `window.localStorage` under keys `moodify_memories`, `moodify_taste_nodes`, `moodify_plans`, `moodify_privacy_settings`, `moodify_context`.
+- **Why it Exists**: Guarantees that evaluator actions (adding a memory, editing ramen to udon, toggling personalization, deleting records, saving plans) survive page refreshes and browser reloads on the same machine, without requiring a remote database server.
+- **Where Implemented**: `src/context/AppContext.tsx` (`useEffect` sync and state initializers).
+- **Production Replacement**: Remote authenticated database backend (PostgreSQL with Drizzle ORM or Firebase Firestore) with optimistic client cache and real-time syncing.
+
+---
+
+## Summary of Mock Authenticity Principle
+
+Every mock in Moodify adheres to the **Principle of Architectural Transparency**:
+1. **Never Lie to the User**: Integrations are tagged `MOCK` in the UI; Why-This breakdowns reflect actual mathematical scoring components; Firewall audit logs show real admitted vs. redacted memory IDs.
+2. **Predictable & Verifiable**: No random roulette outputs—all heuristic pipelines produce verifiable, explainable outputs.
+3. **Graceful Factory Reset**: Evaluators can reset to seed defaults at any time via the "Reset to Seed Defaults" control in the Vault / Privacy Center.

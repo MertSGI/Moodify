@@ -251,6 +251,23 @@ export const SEED_MEMORIES: MemoryItem[] = [
     allowedForExternalTools: false,   // Strictly blocked from external tools
     reasoningForBelief: 'Private family context mentioned once. Gated under Highly Sensitive.',
   },
+  {
+    id: 'mem_13',
+    category: 'travel',
+    key: 'kyoto_japan_trips',
+    value: 'Loves visiting Kyoto and Tokyo for architecture, minimalist ceramic design, quiet gardens, and neighborhood coffee shops',
+    source: 'USER_STATED',
+    sourceQuote: 'My favorite city in the world is Kyoto—the quiet temples, kissaten cafes, and train rides.',
+    createdAt: '2026-08-20T17:00:00Z',
+    updatedAt: '2026-08-20T17:00:00Z',
+    confidence: 0.97,
+    sensitivity: 'PERSONAL',
+    status: 'ACTIVE',
+    userConfirmed: true,
+    allowedForPersonalization: true,
+    allowedForExternalTools: false,
+    reasoningForBelief: 'Stated during initial profile onboarding discussion about design aesthetics.',
+  },
 ];
 
 export const SEED_TASTE_NODES: TasteNode[] = [

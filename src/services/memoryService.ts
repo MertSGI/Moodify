@@ -66,6 +66,60 @@ export class MemoryService {
       });
     }
 
+    // Explicit Favorites & Comfort Preferences (e.g., "My favorite comfort food is ramen")
+    if (
+      textLower.includes('favorite') ||
+      textLower.includes('comfort food') ||
+      textLower.includes('my comfort') ||
+      textLower.includes('i love ') ||
+      textLower.includes('really love ') ||
+      textLower.includes('obsessed with ')
+    ) {
+      let key = 'favorite_preference';
+      let value = userText;
+      let category: MemoryDomain = 'preferences';
+
+      if (
+        textLower.includes('comfort food') ||
+        textLower.includes('ramen') ||
+        textLower.includes('udon') ||
+        textLower.includes('sushi') ||
+        textLower.includes('food') ||
+        textLower.includes('eat')
+      ) {
+        category = 'food';
+        key = 'comfort_food';
+        if (textLower.includes('ramen')) {
+          value = 'Favorite comfort food: ramen (especially authentic counter spots)';
+        } else if (textLower.includes('udon')) {
+          value = 'Favorite comfort food: udon noodles';
+        } else {
+          value = `Favorite food preference: "${userText}"`;
+        }
+      } else if (textLower.includes('music') || textLower.includes('band') || textLower.includes('artist') || textLower.includes('genre')) {
+        category = 'music';
+        key = 'favorite_music';
+        value = userText;
+      } else if (textLower.includes('travel') || textLower.includes('city') || textLower.includes('destination')) {
+        category = 'travel';
+        key = 'favorite_destination';
+        value = userText;
+      }
+
+      candidates.push({
+        id: `cand_${Date.now()}_fav`,
+        category,
+        key,
+        value,
+        sourceQuote: userText,
+        confidence: 0.95,
+        sensitivity: 'NORMAL',
+        tier: 'DURABLE',
+        recommendedAction: 'STORE_DURABLE',
+        explanation: 'User explicitly stated an enduring personal favorite. Stored as durable taste context for personalization.',
+      });
+    }
+
     // Budget preference
     if (
       textLower.includes('budget') ||

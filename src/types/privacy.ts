@@ -6,6 +6,30 @@ export interface FirewallDecision {
   timestamp: string;
   targetService: 'GEMINI_LLM' | 'EXTERNAL_TOOL' | 'RECOMMENDER' | 'CALENDAR_ADAPTER';
   evaluatedMemoriesCount: number;
+  // Formal developer audit view fields
+  task: string;
+  requestedContextCategories: string[];
+  selectedMemories: {
+    id: string;
+    key: string;
+    category: string;
+    value?: string;
+    justification: string;
+  }[];
+  excludedMemories: {
+    id: string;
+    key: string;
+    category: string;
+    exclusionReason: string;
+  }[];
+  sensitiveDataBlocked: {
+    id: string;
+    key: string;
+    category: string;
+    sensitivity: MemorySensitivity;
+    reason: string;
+  }[];
+  // Backward compatibility
   admittedMemories: {
     id: string;
     key: string;
@@ -33,3 +57,4 @@ export interface PrivacySettings {
   applicationLevelEncryptionEnabled: boolean;
   blockedCategories: string[];
 }
+

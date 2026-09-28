@@ -4,7 +4,26 @@ import { MemoryItem } from '../types/memory';
 
 export class ProactiveService {
   /**
-   * Determines if proactive contact is allowed right now based on settings and time
+   * Tracks simulated proactive pings sent today to enforce non-manipulative frequency caps
+   */
+  private static pingsSentTodayCount: number = 1;
+
+  /**
+   * Maximum allowed pings per day by mode
+   */
+  public static getMaxPingsForMode(mode: ProactiveSetting['mode']): number {
+    switch (mode) {
+      case 'QUIET':
+        return 0;
+      case 'BALANCED':
+        return 3;
+      case 'COMPANION':
+        return 5;
+    }
+  }
+
+  /**
+   * Determines if proactive contact is allowed right now based on settings, time, and daily limit
    */
   public static canSendProactivePing(settings: ProactiveSetting): { allowed: boolean; reason?: string } {
     if (settings.isPaused) {
@@ -12,7 +31,16 @@ export class ProactiveService {
     }
 
     if (settings.mode === 'QUIET') {
-      return { allowed: false, reason: 'Mode is set to Quiet (reactive only)' };
+      return { allowed: false, reason: 'Mode is set to Quiet (reactive only, no outbound pings)' };
+    }
+
+    // Daily notification frequency limit
+    const maxPings = this.getMaxPingsForMode(settings.mode);
+    if (this.pingsSentTodayCount >= maxPings) {
+      return {
+        allowed: false,
+        reason: `Daily frequency limit reached (${this.pingsSentTodayCount}/${maxPings} pings sent today in ${settings.mode} mode)`,
+      };
     }
 
     const now = new Date();
@@ -24,11 +52,11 @@ export class ProactiveService {
     if (settings.quietHoursStart > settings.quietHoursEnd) {
       // Overnight (e.g., 22:00 to 08:00)
       if (currentFormatted >= settings.quietHoursStart || currentFormatted < settings.quietHoursEnd) {
-        return { allowed: false, reason: 'Within scheduled Quiet Hours (no notifications)' };
+        return { allowed: false, reason: `Within scheduled Quiet Hours (${settings.quietHoursStart}–${settings.quietHoursEnd})` };
       }
     } else {
       if (currentFormatted >= settings.quietHoursStart && currentFormatted < settings.quietHoursEnd) {
-        return { allowed: false, reason: 'Within scheduled Quiet Hours (no notifications)' };
+        return { allowed: false, reason: `Within scheduled Quiet Hours (${settings.quietHoursStart}–${settings.quietHoursEnd})` };
       }
     }
 
@@ -46,9 +74,10 @@ export class ProactiveService {
     const check = this.canSendProactivePing(settings);
     if (!check.allowed) return null;
 
-    // Follow-up trigger: Important meeting review in past 3 hours
+    // Trigger 1: Important meeting follow-up
     const reviewMem = memories.find(m => m.key === 'design_review_marcus');
     if (reviewMem && settings.allowMeetingFollowUps) {
+      this.pingsSentTodayCount++;
       return {
         id: `proact_${Date.now()}`,
         sender: 'ASSISTANT',
@@ -65,6 +94,52 @@ export class ProactiveService {
       };
     }
 
+    // Trigger 2: Evening wind-down when low battery
+    if (context.primaryState === 'LOW_BATTERY' && settings.allowWindDownSuggestions) {
+      this.pingsSentTodayCount++;
+      return {
+        id: `proact_${Date.now()}_winddown`,
+        sender: 'ASSISTANT',
+        text: 'Noticed your battery is running on low tonight after a long week. Would you like a quiet ambient album to reset, or should I leave you in peace?',
+        timestamp: new Date().toISOString(),
+        isProactive: true,
+        proactiveReason: 'Low battery detected during evening hours',
+        suggestedReplies: [
+          'Put on something quiet and low-effort.',
+          'I’m good, just heading to sleep soon.',
+        ],
+      };
+    }
+
+    // Trigger 3: Concert tour radar alert
+    if (settings.allowConcertAlerts) {
+      const concertMem = memories.find(m => m.key === 'live_shows_preference');
+      if (concertMem) {
+        this.pingsSentTodayCount++;
+        return {
+          id: `proact_${Date.now()}_concert`,
+          sender: 'ASSISTANT',
+          text: 'Ticket radar alert: Japanese Breakfast just added an intimate date at Thalia Hall. Presale starts tomorrow at 10 AM.',
+          timestamp: new Date().toISOString(),
+          isProactive: true,
+          proactiveReason: 'Tracked artist intimate date announcement at favored venue',
+          sourceMemoryTrigger: concertMem.id,
+          suggestedReplies: [
+            'Place a hold on my Google Calendar for the presale.',
+            'Show details and ticket prices.',
+          ],
+        };
+      }
+    }
+
     return null;
+  }
+
+  public static getPingsSentTodayCount(): number {
+    return this.pingsSentTodayCount;
+  }
+
+  public static resetPingsSentToday(): void {
+    this.pingsSentTodayCount = 0;
   }
 }

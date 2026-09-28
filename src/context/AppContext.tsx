@@ -88,6 +88,9 @@ interface AppContextType {
   proactiveSettings: ProactiveSetting;
   updateProactiveSettings: (settings: Partial<ProactiveSetting>) => void;
 
+  // Reset all data to initial seed fixtures
+  resetToSeedData: () => void;
+
   // Quick Demo Scenario Trigger
   triggerScenario: (scenarioId: 'A' | 'B' | 'C' | 'D' | 'E' | 'F') => void;
 }
@@ -97,27 +100,116 @@ const AppContext = createContext<AppContextType | null>(null);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentTab, setCurrentTab] = useState<'NOW' | 'CHAT' | 'DISCOVER' | 'PLANS' | 'YOU'>('NOW');
   const [user] = useState(SEED_USER);
-  const [context, setContext] = useState<ContextSnapshot>(INITIAL_CONTEXT);
-  const [memories, setMemories] = useState<MemoryItem[]>(SEED_MEMORIES);
-  const [tasteNodes, setTasteNodes] = useState<TasteNode[]>(SEED_TASTE_NODES);
+  const [context, setContext] = useState<ContextSnapshot>(() => {
+    try {
+      const stored = localStorage.getItem('moodify_context');
+      return stored ? JSON.parse(stored) : INITIAL_CONTEXT;
+    } catch {
+      return INITIAL_CONTEXT;
+    }
+  });
+
+  const [memories, setMemories] = useState<MemoryItem[]>(() => {
+    try {
+      const stored = localStorage.getItem('moodify_memories');
+      return stored ? JSON.parse(stored) : SEED_MEMORIES;
+    } catch {
+      return SEED_MEMORIES;
+    }
+  });
+
+  const [tasteNodes, setTasteNodes] = useState<TasteNode[]>(() => {
+    try {
+      const stored = localStorage.getItem('moodify_taste_nodes');
+      return stored ? JSON.parse(stored) : SEED_TASTE_NODES;
+    } catch {
+      return SEED_TASTE_NODES;
+    }
+  });
+
   const [tasteEdges] = useState<TasteEdge[]>(SEED_TASTE_EDGES);
   const [recommendations, setRecommendations] = useState<RecommendationItem[]>(SEED_RECOMMENDATIONS);
   const [explorationFactor, setExplorationFactor] = useState<number>(0.35);
   const [inspectingWhyThisItem, setInspectingWhyThisItem] = useState<RecommendationItem | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(INITIAL_CHAT_MESSAGES);
   const [isThinking, setIsThinking] = useState<boolean>(false);
-  const [plans, setPlans] = useState<PlanItem[]>(SEED_PLANS);
+
+  const [plans, setPlans] = useState<PlanItem[]>(() => {
+    try {
+      const stored = localStorage.getItem('moodify_plans');
+      return stored ? JSON.parse(stored) : SEED_PLANS;
+    } catch {
+      return SEED_PLANS;
+    }
+  });
+
   const [actionPlans, setActionPlans] = useState<ActionPlan[]>(SEED_ACTIONS);
   const [pendingActionConfirmation, setPendingActionConfirmation] = useState<ActionPlan | null>(null);
   const [integrations, setIntegrations] = useState<IntegrationProvider[]>(SEED_INTEGRATIONS);
-  const [privacySettings, setPrivacySettings] = useState<PrivacySettings>(DEFAULT_PRIVACY_SETTINGS);
+
+  const [privacySettings, setPrivacySettings] = useState<PrivacySettings>(() => {
+    try {
+      const stored = localStorage.getItem('moodify_privacy_settings');
+      return stored ? JSON.parse(stored) : DEFAULT_PRIVACY_SETTINGS;
+    } catch {
+      return DEFAULT_PRIVACY_SETTINGS;
+    }
+  });
+
   const [proactiveSettings, setProactiveSettings] = useState<ProactiveSetting>(DEFAULT_PROACTIVE_SETTINGS);
   const [firewallLogs, setFirewallLogs] = useState<FirewallDecision[]>([]);
+
+  // Local storage synchronization (functional browser persistence)
+  useEffect(() => {
+    try {
+      localStorage.setItem('moodify_memories', JSON.stringify(memories));
+    } catch {}
+  }, [memories]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('moodify_taste_nodes', JSON.stringify(tasteNodes));
+    } catch {}
+  }, [tasteNodes]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('moodify_plans', JSON.stringify(plans));
+    } catch {}
+  }, [plans]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('moodify_privacy_settings', JSON.stringify(privacySettings));
+    } catch {}
+  }, [privacySettings]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('moodify_context', JSON.stringify(context));
+    } catch {}
+  }, [context]);
 
   // Keep firewall logs updated
   useEffect(() => {
     setFirewallLogs(PersonalContextFirewall.getRecentAuditLogs());
   }, [chatMessages]);
+
+  const resetToSeedData = () => {
+    try {
+      localStorage.removeItem('moodify_memories');
+      localStorage.removeItem('moodify_taste_nodes');
+      localStorage.removeItem('moodify_plans');
+      localStorage.removeItem('moodify_privacy_settings');
+      localStorage.removeItem('moodify_context');
+    } catch {}
+    setMemories(SEED_MEMORIES);
+    setTasteNodes(SEED_TASTE_NODES);
+    setPlans(SEED_PLANS);
+    setPrivacySettings(DEFAULT_PRIVACY_SETTINGS);
+    setContext(INITIAL_CONTEXT);
+    setChatMessages(INITIAL_CHAT_MESSAGES);
+  };
 
   const updateContextDimensions = (dims: Partial<ContextualDimensions>, state?: PrimaryContextState) => {
     setContext(prev => ContextEngine.setSelfReportedMood(prev, dims, state));
@@ -128,6 +220,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addMemory = (memory: Partial<MemoryItem>) => {
+    if (privacySettings.isPrivateSession) {
+      console.warn('Moodify Privacy Guard: Private session active. Memory Vault additions are blocked.');
+      return;
+    }
+
     const newMem: MemoryItem = {
       id: `mem_${Date.now()}`,
       category: memory.category || 'preferences',
@@ -159,6 +256,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const commitCandidateMemory = (candidate: CandidateMemory) => {
+    if (privacySettings.isPrivateSession) {
+      console.warn('Moodify Privacy Guard: Private session active. Candidate commit blocked.');
+      return;
+    }
+
     const newMem: MemoryItem = {
       id: `mem_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       category: candidate.category,
@@ -428,6 +530,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         exportPersonalData,
         proactiveSettings,
         updateProactiveSettings,
+        resetToSeedData,
         triggerScenario,
       }}
     >

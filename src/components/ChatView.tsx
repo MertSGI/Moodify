@@ -31,6 +31,7 @@ export const ChatView: React.FC = () => {
     clearChat,
     context,
     privacySettings,
+    setCurrentTab,
   } = useApp();
 
   const [input, setInput] = useState('');
@@ -109,10 +110,14 @@ export const ChatView: React.FC = () => {
               {/* Firewall / Provenance footnote */}
               {msg.sender === 'ASSISTANT' && msg.firewallTaskId && (
                 <div className="mt-3 pt-2.5 border-t border-stone-800/80 flex items-center justify-between text-[11px] text-stone-400">
-                  <span className="flex items-center gap-1">
+                  <button
+                    onClick={() => setCurrentTab('YOU')}
+                    className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300 transition-colors"
+                    title="Click to inspect this task's decision in Personal Context Firewall"
+                  >
                     <Shield className="w-3 h-3 text-emerald-400" />
-                    <span>Context Firewall: Minimal-Purpose Assembly</span>
-                  </span>
+                    <span className="underline underline-offset-2">Context Firewall: Minimal-Purpose Assembly</span>
+                  </button>
                   <span className="font-mono text-[10px] text-stone-400">{msg.firewallTaskId}</span>
                 </div>
               )}

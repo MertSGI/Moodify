@@ -18,6 +18,17 @@ export type RecommendationFeedbackType =
   | 'ALREADY_TRIED_IT'
   | 'SAVE_FOR_LATER';
 
+export interface RecommendationScoringBreakdown {
+  tasteMatch: number;        // Contribution from taste graph (0.0 to 0.35)
+  contextMatch: number;      // Contribution from context & battery alignment (0.0 to 0.30)
+  constraintMatch: number;   // Contribution from dietary/time/budget constraints (0.0 to 0.20)
+  noveltyScore: number;      // Contribution based on exploration factor (0.0 to 0.15)
+  recencyAdjustment: number; // Boost or decay based on temporal freshness (-0.05 to +0.05)
+  repetitionPenalty: number; // Penalty if recently recommended or seen (0.0 to 0.15)
+  totalScore: number;        // Final composite score (0.0 to 1.0)
+  formulaDescription: string;
+}
+
 export interface WhyThisExplanation {
   summary: string;
   matchedMemories: {
@@ -37,6 +48,7 @@ export interface WhyThisExplanation {
   }[];
   constraintsRespected: string[];
   noveltyScore: number; // 0.0 (safe classic) to 1.0 (novel discovery)
+  scoringBreakdown?: RecommendationScoringBreakdown;
 }
 
 export interface RecommendationItem {

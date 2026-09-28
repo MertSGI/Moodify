@@ -133,6 +133,61 @@ export const WhyThisModal: React.FC<WhyThisModalProps> = ({ item, onClose }) => 
             </div>
           )}
 
+          {/* Deterministic Scoring Formula Breakdown */}
+          {whyThis.scoringBreakdown && (
+            <div className="p-4 rounded-2xl bg-stone-850/80 border border-stone-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-wider font-semibold text-amber-400">
+                  Deterministic Scoring Equation
+                </span>
+                <span className="font-mono text-xs font-bold text-stone-100 px-2 py-0.5 rounded bg-stone-800 border border-stone-700">
+                  Total: {Math.round(whyThis.scoringBreakdown.totalScore * 100)}%
+                </span>
+              </div>
+              <p className="text-[11px] text-stone-400 font-mono leading-relaxed">
+                {whyThis.scoringBreakdown.formulaDescription}
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 text-xs">
+                <div className="p-2.5 rounded-xl bg-stone-900 border border-stone-800">
+                  <span className="text-stone-400 block text-[11px]">Taste Match (35%)</span>
+                  <span className="font-mono font-bold text-rose-400">
+                    +{whyThis.scoringBreakdown.tasteMatch}
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-stone-900 border border-stone-800">
+                  <span className="text-stone-400 block text-[11px]">Context Match (30%)</span>
+                  <span className="font-mono font-bold text-sky-400">
+                    +{whyThis.scoringBreakdown.contextMatch}
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-stone-900 border border-stone-800">
+                  <span className="text-stone-400 block text-[11px]">Constraint Match (20%)</span>
+                  <span className="font-mono font-bold text-emerald-400">
+                    +{whyThis.scoringBreakdown.constraintMatch}
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-stone-900 border border-stone-800">
+                  <span className="text-stone-400 block text-[11px]">Novelty / Exploration</span>
+                  <span className="font-mono font-bold text-amber-400">
+                    +{whyThis.scoringBreakdown.noveltyScore}
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-stone-900 border border-stone-800">
+                  <span className="text-stone-400 block text-[11px]">Recency Adjustment</span>
+                  <span className="font-mono font-bold text-stone-300">
+                    +{whyThis.scoringBreakdown.recencyAdjustment}
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-stone-900 border border-stone-800">
+                  <span className="text-stone-400 block text-[11px]">Repetition Penalty</span>
+                  <span className="font-mono font-bold text-rose-500">
+                    -{whyThis.scoringBreakdown.repetitionPenalty}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Novelty vs Familiarity Bar */}
           <div className="pt-2 border-t border-stone-800">
             <div className="flex items-center justify-between text-xs text-stone-400 mb-1.5">
