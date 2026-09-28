@@ -1,6 +1,6 @@
 # Moodify Prototype Truth Matrix
 
-*Document Version: Phase 2-R1 Prototype Truth Audit Closure*  
+*Document Version: Phase 2-R3 Final Edge-Case Closure*  
 *Target Reviewer: Founder & Lead Architect Review*  
 *Classification Standard: Exact-SHA source code and runtime behavior verification.*
 
@@ -46,7 +46,7 @@
 | 22 | **Concert tracking** | `SIMULATED` | `src/data/seedUser.ts`, `src/services/agentOrchestrator.ts` | Curated venue/artist tour date fixture (Thalia Hall) | Local browser storage | None | Simulates Songkick/Bandsintown tracking for Japanese Breakfast; no live ticketing API feed. |
 | 23 | **Proactive follow-up** | `SIMULATED` | `src/services/proactiveService.ts` | Trigger evaluator for calendar events, evening wind-down, tour alerts | In-memory evaluation | None | Evaluates triggers locally against current context and flags messages with `isProactive: true` and origin reasoning; no background push notifications when app is closed. |
 | 24 | **Quiet hours** | `FUNCTIONAL_LOCAL_ONLY` | `src/services/proactiveService.ts` (`canSendProactivePing`) | User quiet hours schedule (e.g. 22:00 to 08:00) | Local browser storage | None | Evaluates current client system time against configured start/end hours; blocks outbound pings during scheduled quiet periods. |
-| 25 | **Notification limits & proactive settings** | `FUNCTIONAL_LOCAL_ONLY` | `src/services/proactiveService.ts`, `src/context/AppContext.tsx` | User preferences & date-aware counter | Browser `localStorage` (`moodify_proactive_settings`) + local date check | None | Initial daily count = 0; resets on date change; enforces `effectiveMax = min(settings.maxPingsPerDay, modeSafetyCap)` where QUIET=0, BALANCED=3, COMPANION=5. User max is never exceeded. Settings persist in browser storage. |
+| 25 | **Notification limits & proactive runtime** | `FUNCTIONAL_LOCAL_ONLY` | `src/services/proactiveService.ts`, `src/context/AppContext.tsx` | User preferences & localStorage runtime counter | Browser `localStorage` (`moodify_proactive_settings` for preferences, `moodify_proactive_runtime` for daily count) | None | Initial daily count = 0; resets on date change; enforces `effectiveMax = min(settings.maxPingsPerDay, modeSafetyCap)` where QUIET=0, BALANCED=3, COMPANION=5. Daily count persists across page reloads in `moodify_proactive_runtime`. |
 | 26 | **Calendar discovery** | `SIMULATED` | `src/data/seedUser.ts`, `src/types/integrations.ts` | Synthetic calendar snapshot (Q3 review w/ Marcus, free evening) | Seed fixture data (`MOCK_CALENDAR_FIXTURE`) | None | Simulates calendar schedule from mock calendar fixture; runtime integration status is explicitly set to `MOCK`. No live Google Workspace OAuth connection exists. |
 | 27 | **Calendar writes** | `SIMULATED` | `src/services/actionService.ts`, `src/components/modals/ActionConfirmModal.tsx` | Simulated calendar event hold | Creates internal `PlanItem` in `Plans` tab | None | Execution mode is `MOCK_EXECUTION` only. External synchronization is strictly false (`isCalendarSynced = false`). No external Google Calendar API write occurs. Result explicitly clarifies local simulation. |
 | 28 | **Music integrations** | `SIMULATED` | `src/types/integrations.ts`, `src/data/seedUser.ts` | Spotify / Apple Music adapter mock | In-memory adapter toggle | None | Explicitly marked `status: 'MOCK'`; toggling simulates connection without initiating OAuth popup. |
@@ -59,7 +59,7 @@
 | 35 | **External tool execution** | `SIMULATED` | `src/services/actionService.ts` (`executeAction`) | Internal adapter dispatch | Creates verified internal state changes (`MOCK_EXECUTION`) | None | Distinguishes `MOCK_EXECUTION` from `SUCCEEDED`. Does not emit outbound HTTP webhooks to external services. |
 | 36 | **Authentication** | `HARDCODED` | `src/data/seedUser.ts` (`SEED_USER`) | Seed user Alex Chen | Static profile | None | App assumes single authenticated user; no Firebase Auth, OAuth2, or session cookies implemented. |
 | 37 | **Database persistence** | `NOT_IMPLEMENTED` | N/A | Local browser storage only | Client storage only | None | No remote database (Postgres, Firestore, Cloud SQL) provisioned. |
-| 38 | **Cross-session persistence** | `FUNCTIONAL_LOCAL_ONLY` | `src/context/AppContext.tsx` | Browser `localStorage` | Local device storage (6 keys: `moodify_memories`, `moodify_taste_nodes`, `moodify_plans`, `moodify_privacy_settings`, `moodify_proactive_settings`, `moodify_context`) | None | State survives browser refreshes and tab restarts on the same machine; does not sync across multiple devices or separate browsers. During Private Session, context updates are isolated in memory and do not write to `moodify_context`. |
+| 38 | **Cross-session persistence** | `FUNCTIONAL_LOCAL_ONLY` | `src/context/AppContext.tsx` | Browser `localStorage` | Local device storage (7 keys: `moodify_memories`, `moodify_taste_nodes`, `moodify_plans`, `moodify_privacy_settings`, `moodify_proactive_settings`, `moodify_context`, `moodify_proactive_runtime`) | None | State survives browser refreshes and tab restarts on the same machine; does not sync across multiple devices or separate browsers. During Private Session, context updates are isolated in memory and do not write to `moodify_context`; pre-private context is safely restored across reloads. |
 | 39 | **Secrets handling** | `NOT_IMPLEMENTED` | `.env.example` | Environment variable placeholder | None | None | No client secrets embedded in source code; external API keys are not invoked on the client. |
 
 ---
@@ -67,7 +67,7 @@
 ## Technical Audit Summary
 
 - **Total Capabilities Audited**: 40 (with Why-This split into Scoring Breakdown and Narrative)
-- **FUNCTIONAL_LOCAL_ONLY**: 24 (60.0%) — Client-side algorithms, mathematical scoring breakdown, state machines, firewall gating, proactive settings/limits, and browser storage persistence.
+- **FUNCTIONAL_LOCAL_ONLY**: 24 (60.0%) — Client-side algorithms, mathematical scoring breakdown, state machines, firewall gating, proactive settings/limits, runtime counter persistence, and browser storage persistence.
 - **SIMULATED**: 11 (27.5%) — Tool execution, provider integrations, live concert radars, synthetic calendar feeds, and simulated latency.
 - **PARTIAL**: 2 (5.0%) — Curated candidate pool selection + Why-This narrative content.
 - **HARDCODED**: 1 (2.5%) — User authentication and profile identity.
@@ -88,9 +88,12 @@
 - `PROACTIVE_USER_MAX_ENFORCED`: `true`
 - `PROACTIVE_MODE_CAP_ENFORCED`: `true`
 - `PROACTIVE_SETTINGS_PERSISTED`: `true` (`moodify_proactive_settings`)
+- `PROACTIVE_RUNTIME_PERSISTED`: `true` (`moodify_proactive_runtime`)
 - `PRIVATE_SESSION_CONTEXT_ISOLATED`: `true` (zero writes to `moodify_context` during private session)
+- `PRIVATE_SESSION_RELOAD_SAFE`: `true` (pre-private context snapshot preserved across browser reload)
 - `APPLICATION_LEVEL_ENCRYPTION_IMPLEMENTED`: `false` (UI honestly displays NOT IMPLEMENTED IN LOCAL PROTOTYPE)
 - `IMMUTABLE_AUDIT_LOG_IMPLEMENTED`: `false` (bounded in-memory ring buffer)
 - `SERVER_SECRET_VAULT_IMPLEMENTED`: `false` (no application backend)
 - `CRISIS_RESPONSE_FLOW_IMPLEMENTED`: `false`
-- `PHASE_2_STATE`: `HOLD` (Awaiting independent hosted verification; local prototype trust alignment complete)
+- `HOSTED_CI_PRESENT`: `false` (verified local build and lint only)
+- `PHASE_2_STATE`: `CLOSED_SOURCE_VERIFIED_LOCAL_PROTOTYPE`

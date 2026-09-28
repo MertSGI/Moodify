@@ -2,23 +2,61 @@ import { ProactiveSetting, ChatMessage } from '../types/chat';
 import { ContextSnapshot } from '../types/context';
 import { MemoryItem } from '../types/memory';
 
+export interface ProactiveRuntimeState {
+  date: string;
+  count: number;
+}
+
 export class ProactiveService {
   /**
-   * Tracks simulated proactive pings sent today to enforce non-manipulative frequency caps.
-   * Starts at 0, date-aware.
+   * Local storage key for persistent proactivity runtime frequency state.
+   * Tracks daily dispatch count across page reloads without requiring a backend.
    */
-  private static pingsSentTodayCount: number = 0;
-  private static lastPingDate: string = new Date().toISOString().split('T')[0];
+  public static readonly RUNTIME_STORAGE_KEY = 'moodify_proactive_runtime';
 
   /**
-   * Automatically resets counter if calendar date changes
+   * Loads current daily runtime frequency state from localStorage.
+   * Automatically resets count to 0 if the calendar date has changed.
    */
-  private static ensureDateReset(): void {
+  private static getRuntimeState(): ProactiveRuntimeState {
     const today = new Date().toISOString().split('T')[0];
-    if (this.lastPingDate !== today) {
-      this.pingsSentTodayCount = 0;
-      this.lastPingDate = today;
-    }
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const stored = localStorage.getItem(this.RUNTIME_STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && typeof parsed.count === 'number' && parsed.date === today) {
+            return { date: today, count: parsed.count };
+          }
+        }
+      }
+    } catch {}
+    const fresh: ProactiveRuntimeState = { date: today, count: 0 };
+    this.saveRuntimeState(fresh);
+    return fresh;
+  }
+
+  /**
+   * Persists runtime frequency state to localStorage.
+   */
+  private static saveRuntimeState(state: ProactiveRuntimeState): void {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem(this.RUNTIME_STORAGE_KEY, JSON.stringify(state));
+      }
+    } catch {}
+  }
+
+  /**
+   * Atomically increments the daily ping count in localStorage.
+   */
+  private static incrementPingCount(): void {
+    const current = this.getRuntimeState();
+    const updated: ProactiveRuntimeState = {
+      date: current.date,
+      count: current.count + 1,
+    };
+    this.saveRuntimeState(updated);
   }
 
   /**
@@ -53,7 +91,7 @@ export class ProactiveService {
    * Determines if proactive contact is allowed right now based on settings, time, and daily limits
    */
   public static canSendProactivePing(settings: ProactiveSetting): { allowed: boolean; reason?: string } {
-    this.ensureDateReset();
+    const runtime = this.getRuntimeState();
 
     if (settings.isPaused) {
       return { allowed: false, reason: 'Proactivity is temporarily paused by user' };
@@ -65,10 +103,10 @@ export class ProactiveService {
 
     // Daily notification frequency limit: effectiveMax = min(userConfigured, modeCap)
     const effectiveMax = this.getEffectiveMaxPings(settings);
-    if (this.pingsSentTodayCount >= effectiveMax) {
+    if (runtime.count >= effectiveMax) {
       return {
         allowed: false,
-        reason: `Daily frequency limit reached (${this.pingsSentTodayCount}/${effectiveMax} pings sent today; user max: ${settings.maxPingsPerDay}, ${settings.mode} safety cap: ${this.getModeSafetyCap(settings.mode)})`,
+        reason: `Daily frequency limit reached (${runtime.count}/${effectiveMax} pings sent today; user max: ${settings.maxPingsPerDay}, ${settings.mode} safety cap: ${this.getModeSafetyCap(settings.mode)})`,
       };
     }
 
@@ -106,7 +144,7 @@ export class ProactiveService {
     // Trigger 1: Important meeting follow-up
     const reviewMem = memories.find(m => m.key === 'design_review_marcus');
     if (reviewMem && settings.allowMeetingFollowUps) {
-      this.pingsSentTodayCount++;
+      this.incrementPingCount();
       return {
         id: `proact_${Date.now()}`,
         sender: 'ASSISTANT',
@@ -125,7 +163,7 @@ export class ProactiveService {
 
     // Trigger 2: Evening wind-down when low battery
     if (context.primaryState === 'LOW_BATTERY' && settings.allowWindDownSuggestions) {
-      this.pingsSentTodayCount++;
+      this.incrementPingCount();
       return {
         id: `proact_${Date.now()}_winddown`,
         sender: 'ASSISTANT',
@@ -144,7 +182,7 @@ export class ProactiveService {
     if (settings.allowConcertAlerts) {
       const concertMem = memories.find(m => m.key === 'live_shows_preference');
       if (concertMem) {
-        this.pingsSentTodayCount++;
+        this.incrementPingCount();
         return {
           id: `proact_${Date.now()}_concert`,
           sender: 'ASSISTANT',
@@ -165,16 +203,15 @@ export class ProactiveService {
   }
 
   public static getPingsSentTodayCount(): number {
-    this.ensureDateReset();
-    return this.pingsSentTodayCount;
+    return this.getRuntimeState().count;
   }
 
   public static getLastPingDate(): string {
-    return this.lastPingDate;
+    return this.getRuntimeState().date;
   }
 
   public static resetPingsSentToday(): void {
-    this.pingsSentTodayCount = 0;
-    this.lastPingDate = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
+    this.saveRuntimeState({ date: today, count: 0 });
   }
 }

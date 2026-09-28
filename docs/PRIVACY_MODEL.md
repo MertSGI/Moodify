@@ -1,6 +1,6 @@
 # Moodify — Privacy & Trust Model
 
-*Document Version: Phase 2-R2 Final Prototype Trust Alignment*  
+*Document Version: Phase 2-R3 Final Edge-Case Closure*  
 *Standard: Explicit architectural separation between current prototype truth and target production architecture.*
 
 ---
@@ -35,23 +35,33 @@ The **Personal Context Firewall** (`src/services/firewallService.ts`) is functio
 
 ---
 
-### 3. Ephemeral Private Session Boundary (Current Prototype)
+### 3. Ephemeral Private Session Boundary & Reload Safety (Current Prototype)
 
 Moodify provides a 1-tap "Private Session" toggle in the navigation header and Privacy Center:
 
 - **Candidate Memory Extraction Blocked**: Any preference, dislike, or routine stated during a Private Session is ignored by `MemoryService`.
 - **Durable Vault Commits Suppressed**: No memories can be added or committed to the permanent memory store while active.
 - **Taste Learning Suppressed**: Recommendation feedback (`LIKE_IT`, `LOVE_IT`, `NOT_FOR_ME`) does not modify `TasteNode` weights or edge relations.
-- **Durable Context Isolation**:
+- **Durable Context Isolation & Reload Safety**:
   - Upon activating a Private Session, the pre-private durable context snapshot is preserved in memory.
   - While active, context state may adapt ephemerally for in-session conversational continuity, but **private session context is strictly barred from being written to durable `localStorage['moodify_context']`**.
-  - Upon deactivating Private Session, the pre-private durable context is restored, guaranteeing that private session interactions do not contaminate durable recommendation state.
+  - **Browser Reload Safety**: If the page is reloaded while Private Session is active (`isPrivateSession: true`), the pre-private durable context snapshot is safely re-initialized from the untouched durable context in `moodify_context`.
+  - Upon deactivating Private Session (either before or after a browser reload), the pre-private durable context is restored, guaranteeing that private session interactions can **NEVER become durable or contaminate recommendation context across browser reloads**.
 
 ---
 
 ### 4. Storage & Security Posture (Current Prototype)
 
-- **Storage Reality**: All user data (memories, taste graph, plans, settings, context) is stored as unencrypted JSON in browser `window.localStorage`.
+- **Storage Reality**: All user data is stored as unencrypted JSON in browser `window.localStorage` across seven distinct keys:
+  - **User Settings & Domain Data Storage**:
+    - `moodify_memories`: Memory Vault records
+    - `moodify_taste_nodes`: Taste Graph entities & relations
+    - `moodify_plans`: User action plans and checklists
+    - `moodify_privacy_settings`: Privacy preferences
+    - `moodify_proactive_settings`: User proactivity configuration (mode, quiet hours, user max pings)
+    - `moodify_context`: Durable context snapshot (shielded from private session writes)
+  - **Proactivity Runtime Counter Storage**:
+    - `moodify_proactive_runtime`: Tracks `{ date: string, count: number }` to enforce true daily frequency limits across reloads.
 - **Application-Level Encryption Status**: `APPLICATION_LEVEL_ENCRYPTION_IMPLEMENTED = false`. The UI explicitly displays `NOT IMPLEMENTED IN LOCAL PROTOTYPE` for application-level encryption.
 - **Secret Management Status**: `SERVER_SECRET_VAULT_IMPLEMENTED = false`. Because no backend application server exists in the prototype, external API keys and secrets are neither hosted server-side nor stored in the client. External integration adapters operate in simulated `MOCK` mode.
 

@@ -1,6 +1,6 @@
 # Moodify Phase 2 Review
 
-*Document Version: Phase 2-R2 Final Prototype Trust Alignment*  
+*Document Version: Phase 2-R3 Final Edge-Case Closure*  
 *Target Reviewer: Founder & Lead Architect Review*  
 *Standard: Exact-SHA source code and runtime behavior verification.*
 
@@ -8,9 +8,9 @@
 
 ## EXECUTIVE SUMMARY
 
-Moodify has completed an independent Prototype Trust Alignment and hardening pass. The objective was not to expand scope, build production backends, or connect third-party APIs, but to independently verify every technical claim, eliminate prototype-level truth defects, seal ephemeral session boundaries, establish honest documentation boundaries, and calibrate source truth for founder evaluation.
+Moodify has completed an independent Prototype Trust Alignment, edge-case closure, and hardening pass. The objective was not to expand scope, build production backends, or connect third-party APIs, but to independently verify every technical claim, eliminate prototype-level truth defects, seal ephemeral session reload boundaries, establish honest documentation boundaries, and calibrate source truth for founder evaluation.
 
-The application stands confirmed as an honest, fully disclosed, client-side functional vision prototype. All core pillars—**Personal Context Calculation**, **Personal Context Firewall**, **Memory Vault Lifecycle**, **Deterministic Recommendation Scoring**, and **Gated Action Execution**—operate with verifiable local logic. Every external integration is truthfully tagged `MOCK`, calendar sync is strictly verified as local-only (`isCalendarSynced = false`), proactive settings are persisted and capped, private sessions cannot contaminate durable context, encryption truth is honestly stated (`APPLICATION_LEVEL_ENCRYPTION_IMPLEMENTED = false`), and no live Gemini API calls are fabricated (`LIVE_GEMINI_CALL_COUNT = 0`).
+The application stands confirmed as an honest, fully disclosed, client-side functional vision prototype. All core pillars—**Personal Context Calculation**, **Personal Context Firewall**, **Memory Vault Lifecycle**, **Deterministic Recommendation Scoring**, and **Gated Action Execution**—operate with verifiable local logic. Every external integration is truthfully tagged `MOCK`, calendar sync is strictly verified as local-only (`isCalendarSynced = false`), proactive settings and daily dispatch counts are persisted and capped, private sessions cannot contaminate durable context even across page reloads, encryption truth is honestly stated (`APPLICATION_LEVEL_ENCRYPTION_IMPLEMENTED = false`), and no live Gemini API calls are fabricated (`LIVE_GEMINI_CALL_COUNT = 0`).
 
 ---
 
@@ -24,10 +24,10 @@ The application stands confirmed as an honest, fully disclosed, client-side func
 6. **Taste Graph Feedback Loop**: `TasteGraphService.ts` updates node relations (`LOVES`, `LIKES`, `AVOIDS`, `SAVED`, `HAS_TRIED`), adjusts strength weights, and records recency dates based on recommendation feedback.
 7. **Deterministic Recommendation Scoring**: Explainable mathematical formula in `RecommendationService.ts` evaluating taste match (35%), context match (30%), constraint match (20%), exploration novelty (15%), recency adjustment, and repetition penalties.
 8. **Exploration Factor Slider**: Runtime slider (0.0 to 1.0) dynamically shifting recommendation ranking between familiar comfort items and novel serendipity items.
-9. **Private Session Enforcement & Context Isolation**: When enabled, candidate extraction is disabled, durable memory writes are blocked, taste learning is suppressed, and durable `localStorage['moodify_context']` is shielded from private session mutations. Pre-private context is restored upon exit.
+9. **Private Session Enforcement & Reload-Safe Context Isolation**: When enabled, candidate extraction is disabled, durable memory writes are blocked, taste learning is suppressed, and durable `localStorage['moodify_context']` is shielded from private session mutations. Pre-private context is safely preserved and restored across browser reloads.
 10. **Action Risk Taxonomy & Confirmation**: 5-tier risk taxonomy requiring explicit user authorization for consequential actions (`EXTERNAL_WRITE`, `PURCHASE_OR_BOOKING`, `SENSITIVE_ACTION`).
 11. **Plans Interactivity**: Item creation, category filtering, and interactive checklist toggling in `PlansView.tsx`.
-12. **Local Browser Persistence**: Six-key `localStorage` synchronization ensuring user modifications survive browser refreshes.
+12. **Local Browser Persistence**: Seven-key `localStorage` synchronization ensuring user modifications and true daily frequency caps survive browser refreshes.
 
 ---
 
@@ -54,13 +54,16 @@ The application stands confirmed as an honest, fully disclosed, client-side func
 
 ## WHAT SURVIVES REFRESH
 
-Because browser `localStorage` persistence has been implemented in `src/context/AppContext.tsx`, the following state survives browser reloads and tab restarts on the same machine across 6 persistent keys:
-- All Memory Vault records (`moodify_memories` — including newly committed candidates, edited values, sensitivity adjustments, and deletions).
-- Personal Taste Graph nodes, relations, and feedback updates (`moodify_taste_nodes`).
-- Saved Plans, checklist items, completion checkboxes, and simulated calendar holds (`moodify_plans`).
-- Privacy Center settings (`moodify_privacy_settings` — Private Session toggle, Master Personalization toggle, category blocks).
-- Proactive Companion settings (`moodify_proactive_settings` — intensity mode, quiet hours schedule, daily max pings, category toggles).
-- Context snapshot state (`moodify_context` — including manual 1-tap self-reported mood adjustments). Note: During Private Session, ephemeral context updates are isolated in memory and never written to `moodify_context`.
+Because browser `localStorage` persistence has been implemented in `src/context/AppContext.tsx` and `src/services/proactiveService.ts`, the following state survives browser reloads and tab restarts on the same machine across 7 persistent keys:
+- **User Settings & Domain Data Storage (6 keys)**:
+  - All Memory Vault records (`moodify_memories` — including newly committed candidates, edited values, sensitivity adjustments, and deletions).
+  - Personal Taste Graph nodes, relations, and feedback updates (`moodify_taste_nodes`).
+  - Saved Plans, checklist items, completion checkboxes, and simulated calendar holds (`moodify_plans`).
+  - Privacy Center settings (`moodify_privacy_settings` — Private Session toggle, Master Personalization toggle, category blocks).
+  - Proactive Companion settings (`moodify_proactive_settings` — intensity mode, quiet hours schedule, daily max pings, category toggles).
+  - Context snapshot state (`moodify_context` — including manual 1-tap self-reported mood adjustments). Note: During Private Session, ephemeral context updates are isolated in memory and never written to `moodify_context`; pre-private context is safely preserved and restored across browser reloads.
+- **Proactivity Runtime Counter Storage (1 key)**:
+  - Daily dispatch tracker (`moodify_proactive_runtime` — `{ date: "YYYY-MM-DD", count: number }`), enforcing the true daily dispatch cap across reloads without reset bypass.
 
 ---
 
@@ -69,7 +72,7 @@ Because browser `localStorage` persistence has been implemented in `src/context/
 - Active Chat conversation history (resets to initial welcome scenario messages).
 - In-memory Firewall audit decision queue (last 20 logs re-populate dynamically as new chat turns or tasks execute).
 - Cross-device or cross-browser persistence (data is strictly local to the evaluator's current browser profile).
-- Data after clicking "Reset to Seed Defaults" (which intentionally clears all six `localStorage` keys and re-seeds factory defaults).
+- Data after clicking "Reset to Seed Defaults" (which intentionally clears all seven `localStorage` keys and re-seeds factory defaults).
 
 ---
 
@@ -100,7 +103,7 @@ All conversational responses, why-this reasoning displays, context updates, and 
 1. **Personal Context Firewall**: When a task executes, `PersonalContextFirewall.filterContextForTask` evaluates the task intent against candidate memories.
 2. **Minimal-Purpose Assembly**: Only domain-essential memories are admitted (e.g. food + budget for dining). Unrelated domains (work, travel, relationships, music) are excluded with explicit justifications.
 3. **Sensitivity Gating**: `HIGHLY_SENSITIVE` records are blocked unless explicitly queried.
-4. **Private Session & Context Isolation**: Toggleable in Privacy Center or header; when active, candidate extraction is disabled, vault commits are blocked, taste learning is bypassed, and durable context in `localStorage` is guarded from leakage.
+4. **Private Session & Reload-Safe Context Isolation**: Toggleable in Privacy Center or header; when active, candidate extraction is disabled, vault commits are blocked, taste learning is bypassed, and durable context in `localStorage` is guarded from leakage across reloads.
 5. **Developer Audit Log**: The Context Firewall tab displays the live audit trail with the exact 6 fields: `TASK`, `REQUESTED_CONTEXT_CATEGORIES`, `SELECTED_MEMORIES`, `EXCLUDED_MEMORIES`, `EXCLUSION_REASON`, and `SENSITIVE_DATA_BLOCKED`.
 6. **Application Encryption Disclosure**: UI explicitly discloses `APPLICATION_LEVEL_ENCRYPTION_IMPLEMENTED = false` as `NOT IMPLEMENTED IN LOCAL PROTOTYPE`.
 
@@ -120,12 +123,13 @@ All conversational responses, why-this reasoning displays, context updates, and 
 
 ## HOW PROACTIVITY CURRENTLY WORKS
 
-1. **Date-Aware Daily Limit**: Starts at `0`, tracks current calendar date, and automatically resets count when the date advances.
-2. **Authoritative Max Limit**: Strictly enforces `effectiveMax = min(settings.maxPingsPerDay, modeSafetyCap)` where QUIET=0, BALANCED=3, COMPANION=5. User maximum cannot be exceeded.
-3. **Quiet Hours**: Compares client system time against configured schedule (e.g. 22:00 to 08:00); outbound pings are blocked during quiet hours.
-4. **Settings Persistence**: User customizations persist across reloads in `moodify_proactive_settings`.
-5. **Category Toggles**: Distinct logic checks for Meeting Follow-ups, Concert Alerts, and Evening Wind-Down.
-6. **Live Inspector**: YouView displays a Live Proactivity Status card showing whether pings are permitted right now, the active gate reason, and today's frequency count.
+1. **True Date-Aware Daily Limit**: Starts at `0`, tracks current calendar date in `moodify_proactive_runtime`, and automatically resets count when the date advances.
+2. **Persistent Frequency Cap**: Dispatch count survives browser reloads; cannot be bypassed by refreshing the page.
+3. **Authoritative Max Limit**: Strictly enforces `effectiveMax = min(settings.maxPingsPerDay, modeSafetyCap)` where QUIET=0, BALANCED=3, COMPANION=5. User maximum cannot be exceeded.
+4. **Quiet Hours**: Compares client system time against configured schedule (e.g. 22:00 to 08:00); outbound pings are blocked during quiet hours.
+5. **Settings Persistence**: User customizations persist across reloads in `moodify_proactive_settings`.
+6. **Category Toggles**: Distinct logic checks for Meeting Follow-ups, Concert Alerts, and Evening Wind-Down.
+7. **Live Inspector**: YouView displays a Live Proactivity Status card showing whether pings are permitted right now, the active gate reason, and today's frequency count.
 
 ---
 
@@ -159,13 +163,15 @@ All conversational responses, why-this reasoning displays, context updates, and 
 5. **Why-This Classification**: Corrected truth matrix to distinguish `Recommendation Scoring Breakdown` (`FUNCTIONAL_LOCAL_ONLY`) from `Why-This Narrative` (`PARTIAL`).
 6. **Positive Taste Extraction**: Enhanced memory extraction to capture comfort foods, favorites, and positive affinity statements.
 7. **Travel Memory Added**: Added `kyoto_japan_trips` to seed memories, satisfying all 6 required domains.
-8. **Factory Reset Control**: Added "Reset to Seed Defaults" button in YouView clearing all 6 storage keys.
+8. **Factory Reset Control**: Added "Reset to Seed Defaults" button in YouView clearing all 7 storage keys.
 9. **Encryption Truth Alignment**: Corrected `APPLICATION_LEVEL_ENCRYPTION_IMPLEMENTED = false`, updated `DEFAULT_PRIVACY_SETTINGS`, and labeled UI honestly as `NOT IMPLEMENTED IN LOCAL PROTOTYPE`.
 10. **Private Session Context Leak Sealed**: Preserved pre-private context in memory, prevented `moodify_context` writes during private sessions, and restored durable context on exit.
-11. **Proactive Settings Persistence**: Persisted proactive settings to `moodify_proactive_settings`.
+11. **Proactive Settings Persistence**: Persisted user proactive settings to `moodify_proactive_settings`.
 12. **Mock Calendar Provenance Alignment**: Relabeled seed calendar references to `MOCK_CALENDAR_FIXTURE`.
 13. **Truth Matrix Arithmetic Calibration**: Exactly counted 40 capability rows (24 `FUNCTIONAL_LOCAL_ONLY` / 60%, 11 `SIMULATED` / 27.5%, 2 `PARTIAL` / 5%, 1 `HARDCODED` / 2.5%, 2 `NOT_IMPLEMENTED` / 5%), summing to 100.0%.
 14. **Privacy Model Truth Separation**: Distinctly separated current prototype truth from future production architecture in `PRIVACY_MODEL.md`.
+15. **Private Session Reload Safety**: Resolved reload edge case; pre-private context snapshot is safely preserved and restored across browser reloads, preventing private context from ever becoming durable.
+16. **True Daily Proactive Limit Runtime Persistence**: Persisted runtime ping count in `moodify_proactive_runtime`, ensuring reload cannot bypass the daily frequency cap.
 
 ---
 
@@ -184,10 +190,10 @@ All conversational responses, why-this reasoning displays, context updates, and 
 ## PROTOTYPE READINESS
 
 ```
-PHASE_2_STATE = HOLD
+PHASE_2_STATE = CLOSED_SOURCE_VERIFIED_LOCAL_PROTOTYPE
 ```
 
-*State explanation: Awaiting independent hosted verification; all local prototype trust alignment items and documentation invariants are verified and closed.*
+*State explanation: All source-level prototype truth requirements, edge-case invariants, reload safety boundaries, and storage categorizations are source-verified and passing.*
 
 ---
 

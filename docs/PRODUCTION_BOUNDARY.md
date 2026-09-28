@@ -1,6 +1,6 @@
 # Moodify Production Boundary Specification
 
-*Document Version: Phase 2-R1 Technical Truth Audit*  
+*Document Version: Phase 2-R3 Final Edge-Case Closure*  
 *Standard: Boundary definition between current prototype client authority and required production server-side architecture.*
 
 ---
@@ -9,16 +9,22 @@
 
 In the current Vision Prototype, all application state, business logic, and security rules execute client-side within the browser. 
 
-The authoritative persistent records currently reside exclusively in browser `window.localStorage` under six keys:
+The authoritative persistent records currently reside exclusively in browser `window.localStorage` under seven keys:
 
+### A. User Settings & Domain Data Storage
 | Storage Key | Current Prototype Authority | Scope & Lifecycle |
 |---|---|---|
 | `moodify_memories` | Complete authority over user memory vault, including creation, editing, deletion, sensitivity tags, and personalization flags. | Local browser only; persists across reloads on single device/browser. |
 | `moodify_taste_nodes` | Complete authority over the taste graph entities, relations (`LOVES`, `LIKES`, `AVOIDS`), and strength weights. | Local browser only; mutated by recommendation feedback. |
 | `moodify_plans` | Authority over saved intentions, shopping checklists, watchlists, and simulated calendar holds. | Local browser only; mutated by user plan actions. |
-| `moodify_privacy_settings` | Authority over private session toggle, master personalization toggle, sensitive data permissions, and category blocks. | Local browser only; read by Context Firewall. |
-| `moodify_proactive_settings` | Authority over companion proactivity intensity (`QUIET`, `BALANCED`, `COMPANION`), quiet hours window, daily maximum pings, and category alert toggles. | Local browser only; evaluated by Proactive Service. |
-| `moodify_context` | Authority over current contextual dimensions (`energy`, `stress`, `valence`, `focusNeed`), weather, and primary state. | Local browser only; updated by self-report and conversation. (During Private Session, context updates are isolated in memory and barred from writing to this key). |
+| `moodify_privacy_settings` | Authority over user privacy settings (private session toggle, master personalization toggle, sensitive data permissions, category blocks). | Local browser only; read by Context Firewall. |
+| `moodify_proactive_settings` | **User Settings Storage**: Authority over user-configured companion proactivity settings (intensity mode `QUIET`, `BALANCED`, `COMPANION`, quiet hours schedule, user max pings per day, category alert toggles). | Local browser only; persists user preferences across reloads. |
+| `moodify_context` | Authority over durable contextual dimensions (`energy`, `stress`, `valence`, `focusNeed`), weather, and primary state. | Local browser only; updated by self-report and conversation. (During Private Session, context updates are isolated in memory and barred from writing to this key; durable context is preserved and restored across reloads). |
+
+### B. Proactivity Runtime Counter Storage
+| Storage Key | Current Prototype Authority | Scope & Lifecycle |
+|---|---|---|
+| `moodify_proactive_runtime` | **Proactivity Runtime Counter Storage**: Ephemeral runtime dispatch tracker storing `{ date: "YYYY-MM-DD", count: number }`. Enforces the true daily limit across page reloads (cannot be bypassed by refreshing). Automatically resets `count: 0` when the calendar date changes. Cleared on factory reset. | Local browser only; date-aware operational runtime state. |
 
 ### Prototype Authority Warning
 These client-side storage keys are **strictly temporary prototype authorities**. They are subject to local device clearing, lack cross-device synchronization, have no encryption-at-rest beyond host OS security, and provide no team or multi-user isolation.
@@ -78,6 +84,6 @@ To transition Moodify from a functional vision prototype into a production-grade
 
 ## 3. Explicit Non-Implementation Note
 
-Per the instructions for Phase 2-R1, **no backend, cloud database, or server routes have been implemented in this phase**. 
+Per the prototype scope boundaries, **no backend, cloud database, or server routes have been implemented in this phase**. 
 
 The application remains intentionally a **proven, honest, client-side vision prototype** with transparent boundaries.

@@ -26,6 +26,7 @@ import { TasteGraphService } from '../services/tasteService';
 import { ContextEngine } from '../services/contextService';
 import { ActionService } from '../services/actionService';
 import { PersonalContextFirewall } from '../services/firewallService';
+import { ProactiveService } from '../services/proactiveService';
 
 interface AppContextType {
   // Navigation & View
@@ -166,8 +167,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
   const [firewallLogs, setFirewallLogs] = useState<FirewallDecision[]>([]);
 
-  // Ref to preserve durable pre-private-session context
-  const prePrivateContextRef = useRef<ContextSnapshot | null>(null);
+  // Ref to preserve durable pre-private-session context.
+  // If application initializes with isPrivateSession === true (e.g. page reload during private session),
+  // initialize the preserved snapshot from the durable context stored in moodify_context.
+  const initialPrePrivateContext = (() => {
+    try {
+      const storedPrivacy = localStorage.getItem('moodify_privacy_settings');
+      const isPriv = storedPrivacy ? JSON.parse(storedPrivacy).isPrivateSession : DEFAULT_PRIVACY_SETTINGS.isPrivateSession;
+      if (isPriv) {
+        const storedCtx = localStorage.getItem('moodify_context');
+        return storedCtx ? JSON.parse(storedCtx) : INITIAL_CONTEXT;
+      }
+    } catch {}
+    return null;
+  })();
+
+  const prePrivateContextRef = useRef<ContextSnapshot | null>(initialPrePrivateContext);
   const prevPrivateSessionRef = useRef<boolean>(privacySettings.isPrivateSession);
 
   // Monitor Private Session transitions to preserve and restore durable context
@@ -181,7 +196,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       prePrivateContextRef.current = context;
     } else if (wasPrivate && !isPrivate) {
       // Private session ends: restore the pre-private-session durable context
-      const restored = prePrivateContextRef.current;
+      const restored = prePrivateContextRef.current || (() => {
+        try {
+          const stored = localStorage.getItem('moodify_context');
+          return stored ? JSON.parse(stored) : INITIAL_CONTEXT;
+        } catch {
+          return INITIAL_CONTEXT;
+        }
+      })();
       if (restored) {
         setContext(restored);
         try {
@@ -244,9 +266,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.removeItem('moodify_plans');
       localStorage.removeItem('moodify_privacy_settings');
       localStorage.removeItem('moodify_proactive_settings');
+      localStorage.removeItem('moodify_proactive_runtime');
       localStorage.removeItem('moodify_context');
     } catch {}
     prePrivateContextRef.current = null;
+    ProactiveService.resetPingsSentToday();
     setMemories(SEED_MEMORIES);
     setTasteNodes(SEED_TASTE_NODES);
     setPlans(SEED_PLANS);

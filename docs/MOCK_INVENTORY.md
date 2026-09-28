@@ -1,6 +1,6 @@
 # Moodify Mock & Simulation Inventory
 
-*Document Version: Phase 2-R1 Prototype Truth Audit Closure*  
+*Document Version: Phase 2-R3 Final Edge-Case Closure*  
 *Standard: Complete architectural disclosure of all synthetic data, fixtures, simulated delays, and local abstractions.*
 
 ---
@@ -102,12 +102,16 @@ Below is an exhaustive inventory of every mock, fixture, simulated delay, and lo
 
 ---
 
-## 10. Proactive Follow-Up Generator & Settings
+## 10. Proactive Follow-Up Generator & Frequency Runtime
 
 - **What is Mocked**: In-session proactive message generation and companion settings.
 - **Why it Exists**: Demonstrates non-manipulative proactive check-in UI (`isProactive: true`, origin pill, suggested replies) within a single browser session.
-- **Daily Frequency Limit**: Initial count = 0; date-aware reset on calendar day change; strictly enforces `effectiveMax = min(settings.maxPingsPerDay, modeSafetyCap)` (Quiet: 0, Balanced: 3, Companion: 5).
-- **Settings Persistence**: User adjustments to proactivity intensity mode, quiet hours, and category toggles persist in browser storage under `moodify_proactive_settings`.
+- **Daily Frequency Limit & Runtime State**:
+  - Runtime dispatch tracker persisted under `moodify_proactive_runtime` storing `{ date: "YYYY-MM-DD", count: number }`.
+  - Date-aware reset on calendar day change (resets `count: 0` if stored date != current date).
+  - Strictly enforces `effectiveMax = min(settings.maxPingsPerDay, modeSafetyCap)` (Quiet: 0, Balanced: 3, Companion: 5).
+  - **Survives Browser Reload**: Cannot be bypassed by refreshing the page.
+- **User Settings Persistence**: User adjustments to proactivity intensity mode (`QUIET`, `BALANCED`, `COMPANION`), quiet hours, and category toggles persist separately in browser storage under `moodify_proactive_settings`.
 - **Where Implemented**: `src/services/proactiveService.ts`, `src/context/AppContext.tsx`.
 - **Production Replacement**: A cloud-scheduled background worker (e.g. Cloud Tasks or Celery cron) evaluating calendar webhooks, checking quiet hours schedules, and dispatching Web Push Notifications or mobile push notifications.
 
@@ -124,9 +128,18 @@ Below is an exhaustive inventory of every mock, fixture, simulated delay, and lo
 
 ## 12. Local Browser Storage Persistence
 
-- **What is Mocked**: Persistence mechanism. Data is persisted to client-side `window.localStorage` under six keys: `moodify_memories`, `moodify_taste_nodes`, `moodify_plans`, `moodify_privacy_settings`, `moodify_proactive_settings`, and `moodify_context`. (During Private Sessions, context mutations are isolated in memory and barred from writing to `moodify_context`).
+- **What is Mocked**: Persistence mechanism. Data is persisted to client-side `window.localStorage` under seven keys, categorized into:
+  - **User Settings & Domain Data Storage (6 keys)**:
+    1. `moodify_memories`: Memory vault items, sensitivities, and personalization flags.
+    2. `moodify_taste_nodes`: Taste graph entities and affinity relations.
+    3. `moodify_plans`: Saved action plans and checklists.
+    4. `moodify_privacy_settings`: User privacy configurations.
+    5. `moodify_proactive_settings`: Companion proactivity intensity and schedule preferences.
+    6. `moodify_context`: Durable context snapshot (shielded from private session mutations; pre-private context is restored upon session exit and survives reload).
+  - **Proactivity Runtime Counter Storage (1 key)**:
+    7. `moodify_proactive_runtime`: Runtime frequency state `{ date: string, count: number }` enforcing the true daily dispatch cap across browser reloads.
 - **Why it Exists**: Guarantees that evaluator actions (adding a memory, editing preferences, toggling proactivity settings, deleting records, saving plans) survive page refreshes and browser reloads on the same machine, without requiring a remote database server.
-- **Where Implemented**: `src/context/AppContext.tsx` (`useEffect` sync and state initializers).
+- **Where Implemented**: `src/context/AppContext.tsx` (`useEffect` sync and state initializers), `src/services/proactiveService.ts`.
 - **Production Replacement**: Remote authenticated database backend (PostgreSQL with Drizzle ORM or Firebase Firestore) with optimistic client cache and real-time syncing.
 
 ---
@@ -143,3 +156,5 @@ Below is an exhaustive inventory of every mock, fixture, simulated delay, and lo
 8. **`IMMUTABLE_AUDIT_LOG_IMPLEMENTED = false`**: Firewall audit logs are local in-memory bounded ring buffer (last 20 entries).
 9. **`SERVER_SECRET_VAULT_IMPLEMENTED = false`**: No server backend exists in local prototype.
 10. **`CRISIS_RESPONSE_FLOW_IMPLEMENTED = false`**: Clinical terms filtered via regex; no automated crisis escalation pipeline.
+11. **`PROACTIVE_RUNTIME_PERSISTED = true`**: Frequency cap persists in `moodify_proactive_runtime` across browser refreshes.
+12. **`PRIVATE_SESSION_RELOAD_SAFE = true`**: Pre-private context snapshot is preserved across reload; private session context never leaks into durable storage.
