@@ -4,14 +4,30 @@ import { MemoryItem } from '../types/memory';
 
 export class ProactiveService {
   /**
-   * Tracks simulated proactive pings sent today to enforce non-manipulative frequency caps
+   * Tracks simulated proactive pings sent today to enforce non-manipulative frequency caps.
+   * Starts at 0, date-aware.
    */
-  private static pingsSentTodayCount: number = 1;
+  private static pingsSentTodayCount: number = 0;
+  private static lastPingDate: string = new Date().toISOString().split('T')[0];
 
   /**
-   * Maximum allowed pings per day by mode
+   * Automatically resets counter if calendar date changes
    */
-  public static getMaxPingsForMode(mode: ProactiveSetting['mode']): number {
+  private static ensureDateReset(): void {
+    const today = new Date().toISOString().split('T')[0];
+    if (this.lastPingDate !== today) {
+      this.pingsSentTodayCount = 0;
+      this.lastPingDate = today;
+    }
+  }
+
+  /**
+   * Maximum safety cap enforced per mode:
+   * QUIET = 0
+   * BALANCED = 3
+   * COMPANION = 5
+   */
+  public static getModeSafetyCap(mode: ProactiveSetting['mode']): number {
     switch (mode) {
       case 'QUIET':
         return 0;
@@ -23,23 +39,36 @@ export class ProactiveService {
   }
 
   /**
-   * Determines if proactive contact is allowed right now based on settings, time, and daily limit
+   * Authoritative effective maximum:
+   * effectiveMax = min(settings.maxPingsPerDay, modeSafetyCap)
+   * The user's configured maximum must never be exceeded.
+   */
+  public static getEffectiveMaxPings(settings: ProactiveSetting): number {
+    const modeCap = this.getModeSafetyCap(settings.mode);
+    const userMax = typeof settings.maxPingsPerDay === 'number' ? settings.maxPingsPerDay : modeCap;
+    return Math.max(0, Math.min(userMax, modeCap));
+  }
+
+  /**
+   * Determines if proactive contact is allowed right now based on settings, time, and daily limits
    */
   public static canSendProactivePing(settings: ProactiveSetting): { allowed: boolean; reason?: string } {
+    this.ensureDateReset();
+
     if (settings.isPaused) {
       return { allowed: false, reason: 'Proactivity is temporarily paused by user' };
     }
 
     if (settings.mode === 'QUIET') {
-      return { allowed: false, reason: 'Mode is set to Quiet (reactive only, no outbound pings)' };
+      return { allowed: false, reason: 'Mode is set to Quiet (reactive only, 0 outbound pings permitted)' };
     }
 
-    // Daily notification frequency limit
-    const maxPings = this.getMaxPingsForMode(settings.mode);
-    if (this.pingsSentTodayCount >= maxPings) {
+    // Daily notification frequency limit: effectiveMax = min(userConfigured, modeCap)
+    const effectiveMax = this.getEffectiveMaxPings(settings);
+    if (this.pingsSentTodayCount >= effectiveMax) {
       return {
         allowed: false,
-        reason: `Daily frequency limit reached (${this.pingsSentTodayCount}/${maxPings} pings sent today in ${settings.mode} mode)`,
+        reason: `Daily frequency limit reached (${this.pingsSentTodayCount}/${effectiveMax} pings sent today; user max: ${settings.maxPingsPerDay}, ${settings.mode} safety cap: ${this.getModeSafetyCap(settings.mode)})`,
       };
     }
 
@@ -136,10 +165,16 @@ export class ProactiveService {
   }
 
   public static getPingsSentTodayCount(): number {
+    this.ensureDateReset();
     return this.pingsSentTodayCount;
+  }
+
+  public static getLastPingDate(): string {
+    return this.lastPingDate;
   }
 
   public static resetPingsSentToday(): void {
     this.pingsSentTodayCount = 0;
+    this.lastPingDate = new Date().toISOString().split('T')[0];
   }
 }

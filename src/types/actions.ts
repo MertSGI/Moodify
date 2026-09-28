@@ -9,9 +9,10 @@ export type ActionStatus =
   | 'PROPOSED'
   | 'AWAITING_CONFIRMATION'
   | 'CONFIRMED'
-  | 'EXECUTED'
-  | 'CANCELLED'
-  | 'FAILED';
+  | 'MOCK_EXECUTION'
+  | 'SUCCEEDED'
+  | 'FAILED'
+  | 'CANCELLED';
 
 export interface ActionParameter {
   name: string;

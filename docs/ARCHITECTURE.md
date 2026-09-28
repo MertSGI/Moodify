@@ -38,7 +38,7 @@ Moodify is built as a mobile-first full-stack TypeScript application prioritizin
 │                      PROVIDER & ADAPTER INTEGRATION                    │
 │  ┌───────────────┐  ┌───────────────┐  ┌──────────────┐  ┌───────────┐ │
 │  │ Google Cal    │  │ MusicProvider │  │ MovieProvider│  │ Places/   │ │
-│  │ (Live/Mock)   │  │ (Agnostic)    │  │ (TMDB)       │  │ Shopping  │ │
+│  │ (Simulated)   │  │ (Agnostic)    │  │ (TMDB Mock)  │  │ Shopping  │ │
 │  └───────────────┘  └───────────────┘  └──────────────┘  └───────────┘ │
 └────────────────────────────────────────────────────────────────────────┘
 ```
@@ -88,11 +88,13 @@ src/
 
 ---
 
-## 3. Gemini Orchestration & Structured JSON
+## 3. Gemini Orchestration & Structured JSON (Target Production Design)
 
-Generative AI is applied strictly where human conversational nuance and contextual interpretation are required. It is **never** used for deterministic state machines or critical database storage.
+> **Prototype Implementation Note**: In the current Vision Prototype, `LIVE_GEMINI_CALL_COUNT = 0`. The conversational loop, memory candidate extraction, and context derivation execute through deterministic local logic in `src/services/agentOrchestrator.ts` and `src/services/memoryService.ts`. The design below defines the target production architecture.
 
-### Role of Gemini Models:
+In production, Generative AI is applied strictly where human conversational nuance and contextual interpretation are required. It is **never** used for deterministic state machines or critical database storage.
+
+### Role of Gemini Models (Production):
 - **Conversation & Nuance:** Translating complex user expressions (*"I had a brutal day"* vs. *"It actually went well"*) into contextual signals.
 - **Candidate Extraction:** Identifying potential durable memories while rejecting ephemeral chatter and clinical/medical labels.
 - **Structured Recommendation Reasoning:** Formulating natural-language explanations grounded in specific memory keys.

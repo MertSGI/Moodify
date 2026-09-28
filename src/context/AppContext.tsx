@@ -348,7 +348,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActionPlans(prev =>
       prev.map(a =>
         a.id === actionId
-          ? { ...a, status: 'EXECUTED', executedAt: new Date().toISOString(), resultSummary: result.resultSummary }
+          ? { ...a, status: result.executionStatus, executedAt: new Date().toISOString(), resultSummary: result.resultSummary }
           : a
       )
     );
@@ -359,13 +359,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setPendingActionConfirmation(null);
 
-    // Notify in chat
+    // Notify in chat with explicit mock disclaimer
     setChatMessages(prev => [
       ...prev,
       {
         id: `msg_${Date.now()}_sys`,
         sender: 'ASSISTANT',
-        text: `✓ Action completed: ${result.resultSummary}`,
+        text: `[Local Simulation] ${result.resultSummary}`,
         timestamp: new Date().toISOString(),
       },
     ]);

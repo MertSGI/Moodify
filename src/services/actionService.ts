@@ -47,25 +47,32 @@ export class ActionService {
   }
 
   /**
-   * Converts a confirmed ActionPlan into real state change (e.g. PlanItem)
+   * Converts a confirmed ActionPlan into local state change (e.g. PlanItem)
+   * Enforces truthfulness: Simulated mock external action != Real external success.
    */
-  public static executeAction(action: ActionPlan): { success: boolean; resultSummary: string; newPlanItem?: PlanItem } {
+  public static executeAction(action: ActionPlan): {
+    success: boolean;
+    executionStatus: ActionStatus;
+    resultSummary: string;
+    newPlanItem?: PlanItem;
+  } {
     if (action.actionName === 'CREATE_CALENDAR_EVENT') {
       const summaryParam = action.parameters.find(p => p.name === 'summary')?.value || action.title;
       const startParam = action.parameters.find(p => p.name === 'start')?.value || 'Upcoming slot';
 
       return {
         success: true,
-        resultSummary: `Successfully placed "${summaryParam}" on your Google Calendar for ${startParam}.`,
+        executionStatus: 'MOCK_EXECUTION',
+        resultSummary: `Mock calendar action completed locally. No external Google Calendar event was created.`,
         newPlanItem: {
           id: `plan_cal_${Date.now()}`,
           title: summaryParam,
           type: 'EVENT',
-          category: 'Calendar Hold',
+          category: 'Calendar Hold (Mock)',
           date: startParam,
-          isCalendarSynced: true,
+          isCalendarSynced: false,
           status: 'PENDING',
-          notes: 'Auto-synced with Google Calendar via Action Engine.',
+          notes: 'Simulated calendar hold created locally in prototype; not synced to external Google Calendar.',
         },
       };
     }
@@ -73,13 +80,15 @@ export class ActionService {
     if (action.actionName === 'CREATE_SHOPPING_PLAN') {
       return {
         success: true,
-        resultSummary: `Saved 3 curated items to your Plans > Shopping Lists.`,
+        executionStatus: 'MOCK_EXECUTION',
+        resultSummary: `Mock shopping plan completed locally. Saved 3 curated items to your Plans > Shopping Lists. No external store orders were placed.`,
       };
     }
 
     return {
       success: true,
-      resultSummary: `Executed ${action.actionName} with parameter confirmation.`,
+      executionStatus: 'MOCK_EXECUTION',
+      resultSummary: `Simulated local execution for ${action.actionName}. No external provider API was called.`,
     };
   }
 }

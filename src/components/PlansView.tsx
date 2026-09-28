@@ -160,10 +160,15 @@ export const PlansView: React.FC = () => {
                 <span className="text-[10px] font-mono uppercase tracking-wider font-semibold px-2 py-0.5 rounded bg-stone-800 text-stone-400 border border-stone-750">
                   {plan.type.replace('_', ' ')}
                 </span>
-                {plan.isCalendarSynced && (
+                {plan.isCalendarSynced ? (
                   <span className="text-[10px] text-indigo-400 flex items-center gap-1 font-medium">
                     <Calendar className="w-3 h-3" />
                     <span>Calendar Synced</span>
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-stone-500 flex items-center gap-1 font-mono">
+                    <Calendar className="w-3 h-3 text-stone-500" />
+                    <span>Local Only (No External Sync)</span>
                   </span>
                 )}
               </div>

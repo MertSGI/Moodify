@@ -1,8 +1,8 @@
 # Moodify Prototype Truth Matrix
 
-*Document Version: Phase 2 Prototype Truth Audit (Independent Technical Audit)*  
+*Document Version: Phase 2-R1 Prototype Truth Audit Closure*  
 *Target Reviewer: Founder & Lead Architect Review*  
-*Classification Standard: No claims without source code and runtime verification.*
+*Classification Standard: Exact-SHA source code and runtime behavior verification.*
 
 ---
 
@@ -12,7 +12,7 @@
 - **`FUNCTIONAL_LOCAL_ONLY`**: Fully functional client-side logic (state transforms, in-browser persistence, algorithms, filtering, rule engines, interactive UI workflows), operating without remote cloud dependencies.
 - **`SIMULATED`**: Emulates external runtime behaviors via deterministic algorithms, local heuristics, simulated network delays, or synthetic events.
 - **`HARDCODED`**: Purely static fixture data, hard-coded string templates, or unranked preset cards.
-- **`PARTIAL`**: A hybrid where core heuristics/pipelines are functional, but external data fetching or certain edge branches are mock-backed.
+- **`PARTIAL`**: A hybrid where core heuristics/pipelines are functional, but external data fetching or certain narrative/fixture elements remain seeded.
 - **`NOT_IMPLEMENTED`**: Explicit architectural placeholder; no running implementation exists in current prototype.
 
 ---
@@ -22,7 +22,7 @@
 | # | Capability | Classification | Implementation Location | Data Source | Persistence Type | Real External Dependency | Known Limitations |
 |---|---|---|---|---|---|---|---|
 | 1 | **Chat** | `FUNCTIONAL_LOCAL_ONLY` | `src/components/ChatView.tsx`, `src/context/AppContext.tsx` | User input & state store | Client in-memory + local session | None | No WebSockets or server session syncing; messages reset on "Reset to Defaults". |
-| 2 | **Gemini conversation** | `SIMULATED` | `src/services/agentOrchestrator.ts` | Heuristic scenario matching engine | Ephemeral in-memory | None (`@google/genai` package installed but not invoked) | Does not send conversational prompts to the live Gemini LLM API; responses are guided by deterministic scenario branches with rule-based fallback. |
+| 2 | **Gemini conversation** | `SIMULATED` | `src/services/agentOrchestrator.ts` | Heuristic scenario matching engine | Ephemeral in-memory | None (`LIVE_GEMINI_CALL_COUNT = 0`) | `@google/genai` is listed in `package.json`, but no live Gemini inference is currently invoked. Responses are guided by deterministic scenario branches with rule-based fallback. |
 | 3 | **Memory candidate extraction** | `FUNCTIONAL_LOCAL_ONLY` | `src/services/memoryService.ts` (`extractCandidateMemories`) | Regex/keyword intent heuristics over user input | Ephemeral candidate state | None | Rule-based extraction (dislikes, budget boundaries, comfort food, favorites, intentions, clinical exclusions). Not an open-domain NLP parser. |
 | 4 | **Memory persistence** | `FUNCTIONAL_LOCAL_ONLY` | `src/context/AppContext.tsx`, `src/data/seedUser.ts` | Browser `localStorage` (`moodify_memories`) with fallback to seed fixtures | Local browser storage | None | Survives page reloads on same browser/device; no remote cloud synchronization or multi-device account sync. |
 | 5 | **Memory editing** | `FUNCTIONAL_LOCAL_ONLY` | `src/components/modals/MemoryEditModal.tsx`, `src/context/AppContext.tsx` (`updateMemory`) | User form input | Local browser storage | None | Edits update local memory state and propagate to future firewall and context evaluations; no remote DB write. |
@@ -39,23 +39,24 @@
 | 16 | **Recommendation generation** | `PARTIAL` | `src/data/seedUser.ts`, `src/services/recommendationService.ts` | Curated candidate pool across 7 domains | Local browser storage | None | Candidate items are pre-curated high-taste archetypes rather than live web scraping; scoring and selection are dynamic. |
 | 17 | **Recommendation ranking** | `FUNCTIONAL_LOCAL_ONLY` | `src/services/recommendationService.ts` (`calculateDeterministicScore`) | Multi-factor mathematical formula | Local browser storage | None | Deterministic formula: `RecommendationScore = taste_match(35%) + context_match(30%) + constraint_match(20%) + novelty(15%) + recency_adj - repetition_penalty`. |
 | 18 | **Exploration factor** | `FUNCTIONAL_LOCAL_ONLY` | `src/components/DiscoverView.tsx`, `src/services/recommendationService.ts` | User slider (0.0 to 1.0) | React state | None | Dynamically shifts weights: low exploration rewards familiar low-novelty items; high exploration rewards novel serendipity items. |
-| 19 | **Why This explanations** | `FUNCTIONAL_LOCAL_ONLY` | `src/components/modals/WhyThisModal.tsx`, `src/types/recommendation.ts` | True scoring breakdown + provenance links to active memories | Dynamic runtime state | None | Explanations are derived from actual scoring factors (taste nodes, context alignment, memory constraints, mathematical equation breakdown) rather than post-hoc hallucinated text. |
+| 19a | **Recommendation scoring breakdown** | `FUNCTIONAL_LOCAL_ONLY` | `src/services/recommendationService.ts`, `src/components/modals/WhyThisModal.tsx` | True mathematical equation calculated dynamically at runtime | Dynamic runtime state | None | Real local scoring calculation executed on-demand per recommendation item based on current context, taste nodes, and constraints. |
+| 19b | **Why-This narrative** | `PARTIAL` | `src/components/modals/WhyThisModal.tsx`, `src/data/seedUser.ts` | Curated narrative bullets + dynamic scoring breakdown | Seed fixture data + runtime scoring | None | Score components are calculated dynamically at runtime; narrative text blocks (`whyThis.summary`, bullet points) remain partly seeded. Production will synthesize narrative evidence from dynamic scoring/firewall evidence. |
 | 20 | **Plans** | `FUNCTIONAL_LOCAL_ONLY` | `src/components/PlansView.tsx`, `src/context/AppContext.tsx` | User plans state & saved recommendations | Local browser storage | None | Supports item addition, category filtering (shopping, watchlist, events, activities), and completion toggling. |
 | 21 | **Shopping lists** | `FUNCTIONAL_LOCAL_ONLY` | `src/components/PlansView.tsx`, `src/data/seedUser.ts` | Checklist items with estimated prices & store categories | Local browser storage | None | Checkbox interactivity works locally; no live Instacart or Amazon Cart checkout API integration. |
 | 22 | **Concert tracking** | `SIMULATED` | `src/data/seedUser.ts`, `src/services/agentOrchestrator.ts` | Curated venue/artist tour date fixture (Thalia Hall) | Local browser storage | None | Simulates Songkick/Bandsintown tracking for Japanese Breakfast; no live ticketing API feed. |
 | 23 | **Proactive follow-up** | `SIMULATED` | `src/services/proactiveService.ts` | Trigger evaluator for calendar events, evening wind-down, tour alerts | In-memory evaluation | None | Evaluates triggers locally against current context and flags messages with `isProactive: true` and origin reasoning; no background push notifications when app is closed. |
 | 24 | **Quiet hours** | `FUNCTIONAL_LOCAL_ONLY` | `src/services/proactiveService.ts` (`canSendProactivePing`) | User quiet hours schedule (e.g. 22:00 to 08:00) | Local browser storage | None | Evaluates current client system time against configured start/end hours; blocks outbound pings during scheduled quiet periods. |
-| 25 | **Notification limits** | `FUNCTIONAL_LOCAL_ONLY` | `src/services/proactiveService.ts` | Daily frequency counters capped by mode (Quiet: 0, Balanced: 3, Companion: 5) | Local in-memory counter | None | Prevents notification fatigue by counting daily pings and blocking triggers once daily quota is met. |
-| 26 | **Calendar discovery** | `SIMULATED` | `src/data/seedUser.ts`, `src/types/integrations.ts` | Synthetic calendar snapshot (Q3 review w/ Marcus, free evening) | Seed fixture data | None | Simulates connected Google Calendar data; no live Google Workspace OAuth token exchange in prototype. |
-| 27 | **Calendar writes** | `SIMULATED` | `src/services/actionService.ts`, `src/components/modals/ActionConfirmModal.tsx` | Simulated Google Calendar event creation | Creates internal `PlanItem` in `Plans` tab | None | Action Engine prompts explicit confirmation, simulates event dispatch, and writes an authorized hold into internal Plans. No external Google Calendar API write occurs. |
-| 28 | **Music integrations** | `SIMULATED` | `src/types/integrations.ts`, `src/data/seedUser.ts` | Spotify / Apple Music adapter mock | In-memory adapter toggle | None | Displays real vs mock adapter status; toggling connects mock adapter without initiating OAuth popup. |
+| 25 | **Notification limits** | `FUNCTIONAL_LOCAL_ONLY` | `src/services/proactiveService.ts` | Date-aware daily counter capped by `min(userConfigured, modeSafetyCap)` | Local in-memory counter + date check | None | Initial daily count = 0; resets on date change; enforces `effectiveMax = min(settings.maxPingsPerDay, modeSafetyCap)` where QUIET=0, BALANCED=3, COMPANION=5. User max is never exceeded. |
+| 26 | **Calendar discovery** | `SIMULATED` | `src/data/seedUser.ts`, `src/types/integrations.ts` | Synthetic calendar snapshot (Q3 review w/ Marcus, free evening) | Seed fixture data | None | Simulates connected Google Calendar data; runtime integration status is explicitly set to `MOCK`. No live Google Workspace OAuth connection exists. |
+| 27 | **Calendar writes** | `SIMULATED` | `src/services/actionService.ts`, `src/components/modals/ActionConfirmModal.tsx` | Simulated Google Calendar event creation | Creates internal `PlanItem` in `Plans` tab | None | Execution mode is `MOCK_EXECUTION` only. External synchronization is strictly false (`isCalendarSynced = false`). No external Google Calendar API write occurs. |
+| 28 | **Music integrations** | `SIMULATED` | `src/types/integrations.ts`, `src/data/seedUser.ts` | Spotify / Apple Music adapter mock | In-memory adapter toggle | None | Explicitly marked `status: 'MOCK'`; toggling simulates connection without initiating OAuth popup. |
 | 29 | **Movie discovery** | `SIMULATED` | `src/data/seedUser.ts` | Curated film recommendations (Kore-eda, Celine Song, Severance) | Seed fixture data | None | High-fidelity metadata and images; no live TMDB/JustWatch API calls. |
 | 30 | **Event discovery** | `SIMULATED` | `src/data/seedUser.ts` | Chicago local venues fixture (Thalia Hall, Empty Bottle) | Seed fixture data | None | Realistic local venue data; no live Eventbrite or Ticketmaster API query. |
 | 31 | **Places discovery** | `SIMULATED` | `src/data/seedUser.ts` | Neighborhood dining and cafe fixture (Menya Goku) | Seed fixture data | None | Realistic neighborhood points of interest; no live Google Places API query. |
 | 32 | **Shopping discovery** | `SIMULATED` | `src/data/seedUser.ts` | Curated high-protein savory snack hauls under budget | Seed fixture data | None | Hand-curated pantry items matching dietary constraints; no live e-commerce search API. |
 | 33 | **Action risk classification** | `FUNCTIONAL_LOCAL_ONLY` | `src/services/actionService.ts` (`getRiskLevel`) | 5-tier risk taxonomy (`READ_ONLY`, `REVERSIBLE`, `EXTERNAL_WRITE`, `PURCHASE_OR_BOOKING`, `SENSITIVE_ACTION`) | In-code rule dictionary | None | Accurately classifies actions (calendar hold = `EXTERNAL_WRITE`, purchase = `PURCHASE_OR_BOOKING`, save to list = `REVERSIBLE`). |
-| 34 | **Action confirmation** | `FUNCTIONAL_LOCAL_ONLY` | `src/components/modals/ActionConfirmModal.tsx`, `src/services/actionService.ts` | User modal authorization trigger | React state & action queue | None | Consequential actions (`EXTERNAL_WRITE`, `PURCHASE_OR_BOOKING`) cannot execute without explicit user approval. |
-| 35 | **External tool execution** | `SIMULATED` | `src/services/actionService.ts` (`executeAction`) | Internal adapter dispatch | Creates verified internal state changes | None | Executes tool handlers locally by mutating app state and recording summary; does not emit outbound HTTP webhooks to external services. |
+| 34 | **Action confirmation** | `FUNCTIONAL_LOCAL_ONLY` | `src/components/modals/ActionConfirmModal.tsx`, `src/services/actionService.ts` | User modal authorization trigger | React state & action queue | None | Consequential actions (`EXTERNAL_WRITE`, `PURCHASE_OR_BOOKING`) cannot execute without explicit user approval. Modal clearly states execution is local simulation. |
+| 35 | **External tool execution** | `SIMULATED` | `src/services/actionService.ts` (`executeAction`) | Internal adapter dispatch | Creates verified internal state changes (`MOCK_EXECUTION`) | None | Distinguishes `MOCK_EXECUTION` from `SUCCEEDED`. Does not emit outbound HTTP webhooks to external services. |
 | 36 | **Authentication** | `HARDCODED` | `src/data/seedUser.ts` (`SEED_USER`) | Seed user Alex Chen | Static profile | None | App assumes single authenticated user; no Firebase Auth, OAuth2, or session cookies implemented. |
 | 37 | **Database persistence** | `NOT_IMPLEMENTED` | N/A | Local browser storage only | Client storage only | None | No remote database (Postgres, Firestore, Cloud SQL) provisioned. |
 | 38 | **Cross-session persistence** | `FUNCTIONAL_LOCAL_ONLY` | `src/context/AppContext.tsx` | Browser `localStorage` | Local device storage | None | State survives browser refreshes and tab restarts on the same machine; does not sync across multiple devices or separate browsers. |
@@ -65,13 +66,25 @@
 
 ## Technical Audit Summary
 
-- **Total Capabilities Audited**: 39
-- **FUNCTIONAL_LOCAL_ONLY**: 19 (48.7%) — Robust client-side algorithms, state machines, deterministic scoring equations, firewall gating, and browser persistence.
-- **SIMULATED**: 12 (30.8%) — Tool execution, provider integrations, live concert radars, and calendar feeds.
-- **PARTIAL**: 1 (2.6%) — Dynamic multi-factor ranking applied over curated candidate items.
-- **HARDCODED**: 1 (2.6%) — User authentication and profile identity.
-- **NOT_IMPLEMENTED**: 2 (5.1%) — Remote cloud database persistence and cloud secrets management.
+- **Total Capabilities Audited**: 40 (with Why-This split into Scoring Breakdown and Narrative)
+- **FUNCTIONAL_LOCAL_ONLY**: 20 (50.0%) — Client-side algorithms, mathematical scoring breakdown, state machines, firewall gating, and browser persistence.
+- **SIMULATED**: 12 (30.0%) — Tool execution, provider integrations, live concert radars, and calendar feeds.
+- **PARTIAL**: 2 (5.0%) — Curated candidate pool selection + Why-This narrative content.
+- **HARDCODED**: 1 (2.5%) — User authentication and profile identity.
+- **NOT_IMPLEMENTED**: 2 (5.0%) — Remote cloud database persistence and cloud secrets management.
 - **REAL_FUNCTIONAL**: 0 (0.0%) — Prototype does not execute live external paid API calls or cloud writes.
 
-### Audit Verdict for Founder Review
-The prototype functions honestly and reliably as an in-browser local vision demonstration. Every core differentiator—the **Personal Context Firewall**, **Memory Vault lifecycle & sensitivity grading**, **deterministic multi-factor recommendation engine**, **Taste Graph learning**, and **gated Action Engine**—is executed through real, inspectable client logic rather than smoke-and-mirrors mockups. All data boundaries, mock providers, and local persistence constraints are clearly documented and transparent to the user.
+### Invariant Checks Verified
+- `GOOGLE_CALENDAR_RUNTIME_STATUS`: `MOCK`
+- `REAL_CALENDAR_API_CALL_PRESENT`: `false`
+- `CALENDAR_ACTION_EXECUTION_MODE`: `MOCK_EXECUTION`
+- `CALENDAR_PLAN_IS_CALENDAR_SYNCED`: `false`
+- `LIVE_GEMINI_CALL_COUNT`: `0`
+- `REAL_EXTERNAL_INTEGRATION_COUNT`: `0`
+- `WHY_THIS_SCORING_CLASSIFICATION`: `FUNCTIONAL_LOCAL_ONLY`
+- `WHY_THIS_NARRATIVE_CLASSIFICATION`: `PARTIAL`
+- `PROACTIVE_INITIAL_DAILY_COUNT`: `0`
+- `PROACTIVE_COUNTER_DATE_AWARE`: `true`
+- `PROACTIVE_USER_MAX_ENFORCED`: `true`
+- `PROACTIVE_MODE_CAP_ENFORCED`: `true`
+- `PHASE_2_STATE`: `CLOSED_PROVEN_LOCAL_PROTOTYPE`

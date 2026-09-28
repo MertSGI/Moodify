@@ -793,7 +793,7 @@ export const YouView: React.FC = () => {
             {(() => {
               const pingStatus = ProactiveService.canSendProactivePing(proactiveSettings);
               const count = ProactiveService.getPingsSentTodayCount();
-              const maxCount = ProactiveService.getMaxPingsForMode(proactiveSettings.mode);
+              const maxCount = ProactiveService.getEffectiveMaxPings(proactiveSettings);
 
               return (
                 <div className="p-4 rounded-2xl bg-stone-850/70 border border-stone-800 space-y-2.5">

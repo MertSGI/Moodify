@@ -57,7 +57,7 @@ export const ActionConfirmModal: React.FC<ActionConfirmModalProps> = ({ action, 
           <div className="p-3.5 rounded-xl bg-amber-950/20 border border-amber-900/30 flex items-start gap-2.5 text-amber-200/90 text-xs">
             <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
             <span>
-              <strong>Agency Guardrail:</strong> Moodify will never perform external writes or calendar modifications without your explicit consent.
+              <strong>Agency Guardrail:</strong> Moodify will never perform writes without your explicit confirmation. In this prototype, execution is simulated locally—no external provider write occurs.
             </span>
           </div>
         </div>
@@ -75,7 +75,7 @@ export const ActionConfirmModal: React.FC<ActionConfirmModalProps> = ({ action, 
             className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-semibold text-sm transition-colors shadow-lg shadow-amber-500/20 flex items-center gap-2"
           >
             <CheckCircle2 className="w-4 h-4" />
-            <span>Authorize & Execute</span>
+            <span>Authorize Simulation</span>
           </button>
         </div>
       </div>

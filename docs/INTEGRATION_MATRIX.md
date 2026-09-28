@@ -16,7 +16,7 @@ Every integration adapter explicitly publishes its live runtime status to both t
 
 | Provider | Category | Current Status | Auth Model | Risk Level | Capabilities |
 |---|---|---|---|---|---|
-| **Google Calendar** | Calendar & Timing | **LIVE / MOCK** | OAuth 2.0 (Progressive) | `READ_ONLY` / `EXTERNAL_WRITE` | Read schedule gaps, detect free evenings, schedule event holds with explicit approval. |
+| **Google Calendar** | Calendar & Timing | **MOCK** | Simulated Adapter (OAuth 2.0 in target production) | `READ_ONLY` / `EXTERNAL_WRITE` | Read schedule gaps, detect free evenings, schedule event holds (simulated locally as `MOCK_EXECUTION` with `isCalendarSynced: false`). |
 | **Universal Music Adapter** | Audio & Streaming | **MOCK** | Provider Agnostic (Apple Music / Spotify) | `READ_ONLY` | Query track acoustic features, match tempo/energy, export playlists. |
 | **TMDB Catalog** | Cinema & Television | **MOCK** | REST API Token | `READ_ONLY` | Runtime constraints, streaming provider availability, visual tone metadata. |
 | **Ticketmaster Discovery** | Live Events & Concerts | **MOCK** | Developer API Key | `READ_ONLY` | 500-cap venue filtering, indie tour announcements, ticket presale alerts. |

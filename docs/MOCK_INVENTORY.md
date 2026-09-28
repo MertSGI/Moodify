@@ -1,6 +1,6 @@
 # Moodify Mock & Simulation Inventory
 
-*Document Version: Phase 2 Prototype Truth Audit*  
+*Document Version: Phase 2-R1 Prototype Truth Audit Closure*  
 *Standard: Complete architectural disclosure of all synthetic data, fixtures, simulated delays, and local abstractions.*
 
 ---
@@ -42,7 +42,7 @@ Below is an exhaustive inventory of every mock, fixture, simulated delay, and lo
 
 ## 4. LLM & Conversational Response Generation
 
-- **What is Mocked**: Generative conversational output. Responses for scenarios (Rough Day, Friday Night Live Show, Savory Snacks, Marcus Review Follow-up, Movie Night, Concert Radar, Comfort Food Under Budget) are orchestrated through rule-based heuristic routing in `AgentOrchestrator`.
+- **What is Mocked**: Generative conversational output (`LIVE_GEMINI_CALL_COUNT = 0`). Responses for scenarios (Rough Day, Friday Night Live Show, Savory Snacks, Marcus Review Follow-up, Movie Night, Concert Radar, Comfort Food Under Budget) are orchestrated through rule-based heuristic routing in `AgentOrchestrator`.
 - **Why it Exists**: Guarantees deterministic, reliable demonstration of the agent's tone, structure, why-this citations, and firewall gating during evaluation, without risk of API latency, rate limits, or non-deterministic hallucinations.
 - **Where Implemented**: `src/services/agentOrchestrator.ts` (`AgentOrchestrator.processUserMessage`).
 - **Production Replacement**: Server-side Gemini 2.5 Flash / Pro API calls wrapped with system prompts enforcing minimal-purpose context assembly, zero-manipulation companionship rules, and strict JSON output schemas.
@@ -53,7 +53,7 @@ Below is an exhaustive inventory of every mock, fixture, simulated delay, and lo
 
 - **What is Mocked**: A 500ms delay (`await new Promise(res => setTimeout(res, 500))`) before dispatching agent chat replies.
 - **Why it Exists**: Emulates realistic network and neural inference pacing so the user interface transitions smoothly through the `isThinking` state with animated typing indicators.
-- **Where Implemented**: `src/context/AppContext.tsx` (line 396 in `sendMessage`).
+- **Where Implemented**: `src/context/AppContext.tsx` (`sendMessage`).
 - **Production Replacement**: Real network round-trip time of streamed Server-Sent Events (SSE) from the backend LLM service.
 
 ---
@@ -67,19 +67,21 @@ Below is an exhaustive inventory of every mock, fixture, simulated delay, and lo
 
 ---
 
-## 7. Curated Recommendation Candidate Pool
+## 7. Curated Recommendation Candidates & Why-This Narratives
 
-- **What is Mocked**: High-taste curated items across 7 domains (ambient music, Japanese slow cinema, intimate concerts, savory work snacks, local authentic ramen counter, etc.).
-- **Why it Exists**: Ensures that all recommendations presented during founder inspection meet the aesthetic and architectural standards described in the product thesis.
-- **Where Implemented**: `src/data/seedUser.ts` (`SEED_RECOMMENDATIONS`).
-- **Production Replacement**: Live ingestion adapters connecting to domain-specific catalog APIs (Spotify Catalog API, JustWatch / TMDB API, Bandsintown / Ticketmaster API, Google Places / Yelp Fusion API, Instacart / Shopify Storefront APIs).
+- **What is Mocked**: 
+  - Recommendation candidates across 7 domains are pre-curated archetypes.
+  - While the **mathematical scoring breakdown** (`tasteMatch`, `contextMatch`, `constraintMatch`, `noveltyScore`, `recencyAdjustment`, `repetitionPenalty`) is computed dynamically at runtime (`FUNCTIONAL_LOCAL_ONLY`), the **narrative text blocks** (`whyThis.summary`, bullet lists) are partly seeded fixtures (`PARTIAL`).
+- **Why it Exists**: Ensures that all recommendations presented during founder inspection meet the aesthetic and architectural standards described in the product thesis without requiring external web scraping.
+- **Where Implemented**: `src/data/seedUser.ts` (`SEED_RECOMMENDATIONS`), `src/services/recommendationService.ts`.
+- **Production Replacement**: Live catalog ingestion with runtime LLM synthesis of narrative explanations directly grounded in admitted memory IDs and mathematical score components.
 
 ---
 
 ## 8. Provider Integration Adapters
 
 - **What is Mocked**: Status indicators for 5 external integration providers:
-  - Google Calendar (`MOCK`)
+  - Google Calendar (`MOCK` — confirmed in `src/data/seedUser.ts`)
   - Spotify (`MOCK`)
   - Apple Music (`MOCK`)
   - Instacart (`MOCK`)
@@ -92,18 +94,20 @@ Below is an exhaustive inventory of every mock, fixture, simulated delay, and lo
 
 ## 9. Calendar Write Execution (Action Engine)
 
-- **What is Mocked**: Placing a calendar hold (e.g., "Japanese Breakfast Presale Alert" at 9:55 AM).
-- **Why it Exists**: Demonstrates the 5-tier Action Risk hierarchy, the mandatory Action Confirmation Modal for `EXTERNAL_WRITE`, and the subsequent creation of an internal plan item.
-- **Where Implemented**: `src/services/actionService.ts` (`executeAction`), `src/components/modals/ActionConfirmModal.tsx`.
+- **What is Mocked**: Action execution mode is strictly `MOCK_EXECUTION`. External calendar synchronization is strictly false (`isCalendarSynced: false`).
+- **Why it Exists**: Demonstrates the 5-tier Action Risk hierarchy, the mandatory Action Confirmation Modal for `EXTERNAL_WRITE`, and the subsequent creation of an internal plan item without falsely reporting external calendar writes.
+- **Where Implemented**: `src/services/actionService.ts` (`executeAction`), `src/components/modals/ActionConfirmModal.tsx`, `src/types/actions.ts`.
+- **Result Output**: Explicitly states: `"Mock calendar action completed locally. No external Google Calendar event was created."`
 - **Production Replacement**: Google Calendar API `events.insert` endpoint called from an authenticated backend proxy using the user's delegated OAuth token.
 
 ---
 
 ## 10. Proactive Follow-Up Generator
 
-- **What is Mocked**: In-session proactive message generation (e.g. noticing the 2:00 PM design review with Marcus ended 3 hours ago).
+- **What is Mocked**: In-session proactive message generation.
 - **Why it Exists**: Demonstrates non-manipulative proactive check-in UI (`isProactive: true`, origin pill, suggested replies) within a single browser session.
-- **Where Implemented**: `src/services/proactiveService.ts` (`evaluateCandidateProactiveMessage`).
+- **Daily Frequency Limit**: Initial count = 0; date-aware reset on calendar day change; strictly enforces `effectiveMax = min(settings.maxPingsPerDay, modeSafetyCap)` (Quiet: 0, Balanced: 3, Companion: 5).
+- **Where Implemented**: `src/services/proactiveService.ts`.
 - **Production Replacement**: A cloud-scheduled background worker (e.g. Cloud Tasks or Celery cron) evaluating calendar webhooks, checking quiet hours schedules, and dispatching Web Push Notifications or mobile push notifications.
 
 ---
@@ -126,9 +130,11 @@ Below is an exhaustive inventory of every mock, fixture, simulated delay, and lo
 
 ---
 
-## Summary of Mock Authenticity Principle
+## Summary of Mock Authenticity Invariants
 
-Every mock in Moodify adheres to the **Principle of Architectural Transparency**:
-1. **Never Lie to the User**: Integrations are tagged `MOCK` in the UI; Why-This breakdowns reflect actual mathematical scoring components; Firewall audit logs show real admitted vs. redacted memory IDs.
-2. **Predictable & Verifiable**: No random roulette outputs—all heuristic pipelines produce verifiable, explainable outputs.
-3. **Graceful Factory Reset**: Evaluators can reset to seed defaults at any time via the "Reset to Seed Defaults" control in the Vault / Privacy Center.
+1. **`GOOGLE_CALENDAR_RUNTIME_STATUS = MOCK`**: No authenticated Google Calendar OAuth/API connection exists.
+2. **`REAL_CALENDAR_API_CALL_PRESENT = false`**: No network call to Google Calendar API.
+3. **`CALENDAR_ACTION_EXECUTION_MODE = MOCK_EXECUTION`**: Confirmed actions are tagged `MOCK_EXECUTION`.
+4. **`CALENDAR_PLAN_IS_CALENDAR_SYNCED = false`**: Plan items have `isCalendarSynced: false`.
+5. **`LIVE_GEMINI_CALL_COUNT = 0`**: No live LLM inference in the prototype.
+6. **`REAL_EXTERNAL_INTEGRATION_COUNT = 0`**: All external providers operate in local mock mode.

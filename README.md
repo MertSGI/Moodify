@@ -41,11 +41,19 @@ The top of the prototype features a **Scenario Drawer** allowing evaluators to t
 
 ## Project Structure & Documentation
 
-Detailed architectural and design specifications are cataloged in `docs/`:
+Detailed architectural specifications and prototype audit reports are cataloged in `docs/`:
 
+### Truth Audit & Engineering Reality (Phase 2-R1)
+- [`docs/PROTOTYPE_TRUTH_MATRIX.md`](./docs/PROTOTYPE_TRUTH_MATRIX.md) — Exact classification across all 40 capabilities (Real vs Local vs Simulated vs Mock).
+- [`docs/MOCK_INVENTORY.md`](./docs/MOCK_INVENTORY.md) — Comprehensive inventory of every mock, fixture, simulated delay, and local storage state.
+- [`docs/AI_ORCHESTRATION.md`](./docs/AI_ORCHESTRATION.md) — Current deterministic local runtime (`LIVE_GEMINI_CALL_COUNT = 0`) vs. future production design.
+- [`docs/PRODUCTION_BOUNDARY.md`](./docs/PRODUCTION_BOUNDARY.md) — Current client localStorage authorities vs. required server-side migrations.
+- [`docs/PHASE_2_REVIEW.md`](./docs/PHASE_2_REVIEW.md) — Final executive and technical closure report for founder review.
+
+### Vision & System Specifications
 - [`docs/BRAND_NOTES.md`](./docs/BRAND_NOTES.md) — 20 brand name candidates, trademark analysis, and top 5 recommendations.
 - [`docs/PRODUCT_THESIS.md`](./docs/PRODUCT_THESIS.md) — Core job-to-be-done, target user, retention loop, and positioning.
-- [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — System diagram, component interactions, and Gemini orchestration.
+- [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — Target system diagram, component interactions, and orchestration boundaries.
 - [`docs/MEMORY_MODEL.md`](./docs/MEMORY_MODEL.md) — Structured schema, 25 domains, sensitivity grading, and extraction tiering.
 - [`docs/PRIVACY_MODEL.md`](./docs/PRIVACY_MODEL.md) — Personal Context Firewall, minimal-purpose assembly, and private sessions.
 - [`docs/INTEGRATION_MATRIX.md`](./docs/INTEGRATION_MATRIX.md) — Real vs. mock status, provider adapters, and risk hierarchy.
@@ -53,9 +61,10 @@ Detailed architectural and design specifications are cataloged in `docs/`:
 
 ---
 
-## Technical Stack
+## Technical Stack & Prototype Boundary
 
-- **Frontend:** React 19 + TypeScript + Vite
-- **Styling:** Tailwind CSS (warm, calm, premium aesthetic with subtle ambient state glowing)
+- **Frontend:** React 19 + TypeScript + Vite (Port 3000)
+- **Styling:** Tailwind CSS (warm, calm, premium dark aesthetic with ambient mood indicator)
 - **Icons:** Lucide React
-- **Orchestration:** Gemini API TypeScript SDK ready with local intelligent fallback engine for instant evaluation
+- **Runtime Mode:** Proven local vision prototype (`LIVE_GEMINI_CALL_COUNT = 0`, all integrations `MOCK`, external sync `false`, localStorage persistence)
+- **Production Target:** Node.js/Express backend on Cloud Run with Gemini 2.5 Flash/Pro and PostgreSQL RLS storage.
